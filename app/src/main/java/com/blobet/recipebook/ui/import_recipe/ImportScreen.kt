@@ -141,6 +141,16 @@ fun ImportScreen(
                 singleLine = true,
             )
 
+            OutlinedTextField(
+                value = uiState.optionalDescriptionText,
+                onValueChange = viewModel::onOptionalDescriptionTextChange,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text(stringResource(R.string.import_optional_description_label)) },
+                placeholder = { Text(stringResource(R.string.import_optional_description_placeholder)) },
+                minLines = 4,
+                maxLines = 10,
+            )
+
             Button(
                 onClick = {
                     focusManager.clearFocus(force = true)

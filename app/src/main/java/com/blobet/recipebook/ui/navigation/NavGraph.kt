@@ -75,7 +75,16 @@ fun NavGraph(sharedText: String? = null) {
             arguments = listOf(navArgument("recipeId") { type = NavType.LongType })
         ) {
             DetailScreen(
-                onNavigateBack = { navController.popBackStack() },
+                onNavigateBack = {
+                    val currentRoutes = navController.previousBackStackEntry?.destination?.route
+                    val popped = navController.popBackStack()
+                    if (!popped || currentRoutes == null) {
+                        navController.navigate(Screen.Home.route) {
+                            popUpTo(navController.graph.startDestinationId)
+                            launchSingleTop = true
+                        }
+                    }
+                },
                 onEditClick = { recipeId ->
                     navController.navigate(Screen.EditRecipe.createRoute(recipeId))
                 }
@@ -110,7 +119,15 @@ fun NavGraph(sharedText: String? = null) {
                 ?: ""
 
             ImportScreen(
-                onNavigateBack = { navController.popBackStack() },
+                onNavigateBack = {
+                    val popped = navController.popBackStack()
+                    if (!popped) {
+                        navController.navigate(Screen.Home.route) {
+                            popUpTo(Screen.ImportRecipe.route) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    }
+                },
                 onRecipeImported = { recipeId ->
                     navController.popBackStack()
                     navController.navigate(Screen.RecipeDetail.createRoute(recipeId))

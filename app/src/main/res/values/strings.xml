@@ -42,6 +42,8 @@
     <string name="back">Back</string>
     <string name="import_paste_url">Paste a recipe URL</string>
     <string name="import_url_placeholder">https://www.example.com/recipe/...</string>
+    <string name="import_optional_description_label">Optional description text</string>
+    <string name="import_optional_description_placeholder">If URL import misses steps, paste the full description/caption here and retry extract.</string>
     <string name="import_paste_clipboard">Paste from clipboard</string>
     <string name="import_fetching">Fetching recipe...</string>
     <string name="import_extract_recipe">Extract Recipe</string>
@@ -123,6 +125,8 @@
     <string name="error_fetch_page">Failed to fetch page: %1$s</string>
     <string name="error_save">Failed to save: %1$s</string>
     <string name="error_no_url_in_shared_content">No URL found in shared content.</string>
+    <string name="error_tiktok_no_description">Could not find TikTok description text to parse.</string>
+    <string name="error_tiktok_fetch">Failed to fetch TikTok page: %1$s</string>
     <string name="error_recipe_not_found">Recipe not found</string>
     <string name="error_save_image">Failed to save image: %1$s</string>
     <string name="error_title_required">Title is required</string>

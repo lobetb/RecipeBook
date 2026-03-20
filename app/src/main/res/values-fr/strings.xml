@@ -42,6 +42,8 @@
     <string name="back">Retour</string>
     <string name="import_paste_url">Collez une URL de recette</string>
     <string name="import_url_placeholder">https://www.exemple.com/recette/...</string>
+    <string name="import_optional_description_label">Texte descriptif optionnel</string>
+    <string name="import_optional_description_placeholder">Si l import par URL manque des etapes, collez ici la description complete puis relancez l extraction.</string>
     <string name="import_paste_clipboard">Coller depuis le presse-papiers</string>
     <string name="import_fetching">Recuperation de la recette...</string>
     <string name="import_extract_recipe">Extraire la recette</string>
@@ -123,6 +125,8 @@
     <string name="error_fetch_page">Echec du chargement de la page : %1$s</string>
     <string name="error_save">Echec de l enregistrement : %1$s</string>
     <string name="error_no_url_in_shared_content">Aucune URL trouvee dans le contenu partage.</string>
+    <string name="error_tiktok_no_description">Impossible de trouver une description TikTok a analyser.</string>
+    <string name="error_tiktok_fetch">Echec du chargement de la page TikTok : %1$s</string>
     <string name="error_recipe_not_found">Recette introuvable</string>
     <string name="error_save_image">Echec de l enregistrement de l image : %1$s</string>
     <string name="error_title_required">Le titre est obligatoire</string>

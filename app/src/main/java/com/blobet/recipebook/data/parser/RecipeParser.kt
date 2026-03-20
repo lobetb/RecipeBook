@@ -33,6 +33,15 @@ object RecipeParser {
     )
 
     private const val heuristicConfidenceThreshold = 0.55f
+    private val textStepVerbRegex = Regex(
+        """\b(mix|stir|bake|cook|add|heat|serve|boil|preheat|pour|grill|fry|melt|whisk|combine|blend|chop|slice|cuire|ajouter|melanger|mélanger|chauffer|servir|faire\s+bouillir|prechauffer|préchauffer)\b""",
+        RegexOption.IGNORE_CASE,
+    )
+
+    private val inlineIngredientRegex = Regex(
+        """(\d+[\d\s/.,-]*\s*(g|kg|mg|ml|l|cl|cup|cups|tbsp|tsp|oz|lb|pinch|cloves?|slice|slices|onions?|garlic\s+cloves?|c\.?\s?a\.?\s?s\.?|c\.?\s?a\.?\s?c\.?)\s+[^\d\n#]{2,60})""",
+        RegexOption.IGNORE_CASE,
+    )
 
     data class ParseResult(
         val recipe: Recipe?,
@@ -66,6 +75,159 @@ object RecipeParser {
         } catch (e: Exception) {
             ParseResult(recipe = null, error = "Error parsing page: ${e.message}")
         }
+    }
+
+    fun parseTextRecipe(text: String, sourceUrl: String): ParseResult {
+        val normalized = text
+            .replace("\r\n", "\n")
+            .replace("\r", "\n")
+            .replace("|", "\n")
+            .replace(";", "\n")
+            .replace(Regex("""\s*[•●▪◦·]\s*"""), "\n- ")
+            .replace(Regex("""(?<!\n)\s+(?=\d+[.)]\s+)"""), "\n")
+            .replace(Regex("""(?<!\n)\s+-\s+(?=[A-Za-z0-9])"""), "\n- ")
+            .replace(Regex("#[\\p{L}0-9_]+"), "")
+            .trim()
+
+        if (normalized.isBlank()) {
+            return ParseResult(recipe = null, error = "No text recipe content found")
+        }
+
+        val lines = normalized
+            .split(Regex("\n+"))
+            .map { cleanHtml(it).trim() }
+            .filter { it.isNotBlank() }
+            .flatMap { splitCompoundListLine(it) }
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+
+        if (lines.isEmpty()) {
+            return ParseResult(recipe = null, error = "No text recipe content found")
+        }
+
+        val title = lines.firstOrNull { line ->
+            !isHeadingLine(line) && !isLikelyNoiseLine(line)
+        }?.take(80) ?: "TikTok Recipe"
+        val ingredients = mutableListOf<Ingredient>()
+        val instructions = mutableListOf<String>()
+
+        lines.forEachIndexed { index, line ->
+            when {
+                looksLikeIngredientLine(line) -> ingredients.add(IngredientParser.parse(line, ingredients.size))
+                looksLikeInstructionLine(line) -> instructions.add(cleanHtml(line))
+            }
+        }
+
+        if (instructions.isEmpty()) {
+            val inlineSteps = Regex("""(\d+\.\s+[^\n]{15,400})(?=(\s+\d+\.\s+)|$)""")
+                .findAll(normalized)
+                .map { it.groupValues[1].trim() }
+                .filter { looksLikeInstructionLine(it) }
+                .toList()
+            if (inlineSteps.isNotEmpty()) {
+                instructions.addAll(inlineSteps)
+            }
+        }
+
+        if (instructions.isEmpty()) {
+            val numberedSteps = Regex(
+                """(?:^|\s)(\d+[\.)]\s+.{15,900}?)(?=(?:\s\d+[\.)]\s+)|$)""",
+                setOf(RegexOption.DOT_MATCHES_ALL),
+            )
+                .findAll(normalized)
+                .map { it.groupValues[1].replace(Regex("\\s+"), " ").trim() }
+                .filter { it.length in 12..900 }
+                .toList()
+
+            if (numberedSteps.size >= 2) {
+                instructions.addAll(numberedSteps)
+            }
+        }
+
+        if (ingredients.isEmpty()) {
+            inlineIngredientRegex.findAll(normalized).forEach { match ->
+                val candidate = cleanHtml(match.groupValues[1]).trim().trim(',', '.', ';')
+                if (candidate.length in 4..90) {
+                    ingredients.add(IngredientParser.parse(candidate, ingredients.size))
+                }
+            }
+        }
+
+        if (ingredients.isEmpty() && instructions.isEmpty()) {
+            return ParseResult(recipe = null, error = "Could not detect ingredients or instructions in shared text")
+        }
+
+        if (instructions.size == 1) {
+            // Try splitting one long line into usable steps
+            val split = instructions.first().split(Regex("(?<=\\.)\\s+(?=[A-Z0-9])"))
+                .map { it.trim() }
+                .filter { it.length > 8 }
+            if (split.size > 1) {
+                instructions.clear()
+                instructions.addAll(split)
+            }
+        }
+
+        return ParseResult(
+            recipe = Recipe(
+                title = title,
+                description = lines.take(3).joinToString(" ").take(240),
+                sourceUrl = sourceUrl,
+                servings = 4,
+                ingredients = ingredients,
+                instructions = instructions,
+            )
+        )
+    }
+
+    private fun looksLikeIngredientLine(line: String): Boolean {
+        val lower = line.lowercase()
+        if (lower.startsWith("ingredients")) return false
+        if (line.length < 3 || line.length > 140) return false
+        return quantityUnitRegex.containsMatchIn(line) ||
+            Regex("""^[-•]\s+.+""").containsMatchIn(line)
+    }
+
+    private fun looksLikeInstructionLine(line: String): Boolean {
+        val lower = line.lowercase()
+        if (lower.startsWith("instructions") || lower.startsWith("directions") || lower.startsWith("method")) {
+            return false
+        }
+        if (line.length < 8 || line.length > 800) return false
+        val hasStepPrefix = Regex("""^(step\s*\d+|\d+[.)])""", RegexOption.IGNORE_CASE).containsMatchIn(line)
+        return hasStepPrefix || textStepVerbRegex.containsMatchIn(line)
+    }
+
+    private fun isHeadingLine(line: String): Boolean {
+        val lower = line.lowercase()
+        return lower.startsWith("ingredients") ||
+            lower.startsWith("instructions") ||
+            lower.startsWith("directions") ||
+            lower.startsWith("method")
+    }
+
+    private fun splitCompoundListLine(line: String): List<String> {
+        val normalizedLine = line.trim()
+
+        val numberedMatches = Regex("""\d+[.)]\s+[^\d].{2,220}(?=(\s+\d+[.)]\s+)|$)""")
+            .findAll(normalizedLine)
+            .map { it.value.trim() }
+            .toList()
+        if (numberedMatches.size >= 2) return numberedMatches
+
+        val bulletMatches = Regex("""[-•]\s+.{2,180}(?=(\s+[-•]\s+)|$)""")
+            .findAll(normalizedLine)
+            .map { it.value.trim() }
+            .toList()
+        if (bulletMatches.size >= 2) return bulletMatches
+
+        return listOf(normalizedLine)
+    }
+
+    private fun isLikelyNoiseLine(line: String): Boolean {
+        val lower = line.lowercase()
+        return (lower.contains("likes") && lower.contains("comments")) ||
+            lower.startsWith("share an #")
     }
 
     private fun extractFromJsonLd(doc: Document, sourceUrl: String): Recipe? {
