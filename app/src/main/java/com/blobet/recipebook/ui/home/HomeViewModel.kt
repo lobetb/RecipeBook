@@ -1,11 +1,13 @@
 package com.blobet.recipebook.ui.home
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.blobet.recipebook.data.repository.RecipeRepository
 import com.blobet.recipebook.data.repository.TagRepository
 import com.blobet.recipebook.domain.model.Recipe
 import com.blobet.recipebook.domain.model.Tag
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,6 +33,7 @@ data class HomeUiState(
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val recipeRepository: RecipeRepository,
     private val tagRepository: TagRepository,
 ) : ViewModel() {
@@ -39,7 +42,7 @@ class HomeViewModel @Inject constructor(
     private val _selectedTagIds = MutableStateFlow<Set<Long>>(emptySet())
     private val _selectedRecipeTypes = MutableStateFlow<Set<RecipeTypeFilter>>(emptySet())
     private val _sortMode = MutableStateFlow(SortMode.NEWEST_FIRST)
-    private val _layoutMode = MutableStateFlow(LayoutMode.LARGE)
+    private val _layoutMode = MutableStateFlow(loadSavedLayoutMode())
     private val _showFavoritesOnly = MutableStateFlow(false)
 
     private val selectedFilters = combine(
@@ -155,6 +158,7 @@ class HomeViewModel @Inject constructor(
 
     fun onLayoutModeChange(mode: LayoutMode) {
         _layoutMode.value = mode
+        saveLayoutMode(mode)
     }
 
     fun onToggleRecipeFavorite(recipeId: Long, currentFavorite: Boolean) {
@@ -171,4 +175,26 @@ class HomeViewModel @Inject constructor(
         val layoutMode: LayoutMode,
         val favoritesOnly: Boolean,
     )
+
+    private fun loadSavedLayoutMode(): LayoutMode {
+        val stored = context
+            .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getString(KEY_LAYOUT_MODE, null)
+            ?: return LayoutMode.LARGE
+
+        return LayoutMode.entries.firstOrNull { it.name == stored } ?: LayoutMode.LARGE
+    }
+
+    private fun saveLayoutMode(mode: LayoutMode) {
+        context
+            .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_LAYOUT_MODE, mode.name)
+            .apply()
+    }
+
+    companion object {
+        private const val PREFS_NAME = "home_ui_prefs"
+        private const val KEY_LAYOUT_MODE = "layout_mode"
+    }
 }
