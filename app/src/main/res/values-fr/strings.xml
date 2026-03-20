@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Recipe Book</string>
+    <string name="home_title">Recipe Book</string>
+    <string name="home_toggle_favorites">Afficher les favoris</string>
+    <string name="home_filter_recipes">Filtrer les recettes</string>
+    <string name="home_sort_recipes">Trier les recettes</string>
+    <string name="home_layout_options">Options de vue</string>
+    <string name="home_settings">Parametres</string>
+    <string name="home_import_from_url">Importer depuis une URL</string>
+    <string name="home_create_manually">Creer manuellement</string>
+    <string name="home_add_recipe">Ajouter une recette</string>
+    <string name="home_no_recipes_found">Aucune recette trouvee</string>
+    <string name="home_no_recipes_yet">Aucune recette pour le moment</string>
+    <string name="home_add_first_recipe">Appuyez sur + pour ajouter votre premiere recette</string>
+    <string name="home_adjust_filters">Essayez de modifier vos filtres</string>
+
+    <string name="search_placeholder">Rechercher des recettes...</string>
+    <string name="search">Rechercher</string>
+    <string name="clear_search">Effacer la recherche</string>
+
+    <string name="type_breakfast">Petit-dejeuner</string>
+    <string name="type_lunch">Dejeuner</string>
+    <string name="type_dinner">Diner</string>
+    <string name="type_dessert">Dessert</string>
+    <string name="type_snack">En-cas</string>
+    <string name="type_soup">Soupe</string>
+    <string name="type_salad">Salade</string>
+    <string name="type_side">Accompagnement</string>
+    <string name="type_drink">Boisson</string>
+
+    <string name="sort_alpha_asc">A vers Z</string>
+    <string name="sort_alpha_desc">Z vers A</string>
+    <string name="sort_newest_first">Plus recentes d abord</string>
+    <string name="sort_oldest_first">Plus anciennes d abord</string>
+
+    <string name="layout_large">Large</string>
+    <string name="layout_small">Petite</string>
+    <string name="layout_list">Liste</string>
+
+    <string name="import_title">Importer une recette</string>
+    <string name="back">Retour</string>
+    <string name="import_paste_url">Collez une URL de recette</string>
+    <string name="import_url_placeholder">https://www.exemple.com/recette/...</string>
+    <string name="import_paste_clipboard">Coller depuis le presse-papiers</string>
+    <string name="import_fetching">Recuperation de la recette...</string>
+    <string name="import_extract_recipe">Extraire la recette</string>
+    <string name="import_preview">Apercu de la recette</string>
+    <string name="label_prep">Preparation : %1$s</string>
+    <string name="label_cook">Cuisson : %1$s</string>
+    <string name="label_servings">Portions : %1$d</string>
+    <string name="label_ingredients_count">Ingredients (%1$d)</string>
+    <string name="label_and_more">... et %1$d de plus</string>
+    <string name="label_instructions_count">Instructions (%1$d etapes)</string>
+    <string name="save_recipe">Enregistrer la recette</string>
+
+    <string name="detail_toggle_favorite">Basculer favori</string>
+    <string name="share">Partager</string>
+    <string name="edit">Modifier</string>
+    <string name="delete">Supprimer</string>
+    <string name="add_to_favorites">Ajouter aux favoris</string>
+    <string name="remove_from_favorites">Retirer des favoris</string>
+    <string name="recipe_not_found">Recette introuvable</string>
+    <string name="view_original_recipe">Voir la recette d origine</string>
+    <string name="ingredients">Ingredients</string>
+    <string name="instructions">Instructions</string>
+    <string name="delete_recipe_title">Supprimer la recette</string>
+    <string name="delete_recipe_confirmation">Etes-vous sur de vouloir supprimer cette recette ? Cette action est irreversible.</string>
+    <string name="cancel">Annuler</string>
+
+    <string name="servings">Portions</string>
+    <string name="decrease_servings">Diminuer les portions</string>
+    <string name="increase_servings">Augmenter les portions</string>
+    <string name="servings_original">(a l origine %1$d)</string>
+
+    <string name="edit_recipe_title">Modifier la recette</string>
+    <string name="new_recipe_title">Nouvelle recette</string>
+    <string name="save_recipe_cd">Enregistrer la recette</string>
+    <string name="recipe_photo">Photo de la recette</string>
+    <string name="tap_to_add_photo">Appuyez pour ajouter une photo</string>
+    <string name="field_title_required">Titre *</string>
+    <string name="field_description">Description</string>
+    <string name="field_prep_minutes">Preparation (min)</string>
+    <string name="field_cook_minutes">Cuisson (min)</string>
+    <string name="field_servings">Portions</string>
+    <string name="field_source_url_optional">URL source (optionnel)</string>
+    <string name="ingredient_example">ex. : 2 tasses de farine</string>
+    <string name="remove_ingredient">Supprimer l ingredient</string>
+    <string name="add_ingredient">Ajouter un ingredient</string>
+    <string name="instruction_step">Etape %1$d</string>
+    <string name="remove_step">Supprimer l etape</string>
+    <string name="add_step">Ajouter une etape</string>
+    <string name="tags">Etiquettes</string>
+    <string name="new_tag">Nouvelle etiquette</string>
+    <string name="tag_name">Nom de l etiquette</string>
+    <string name="add">Ajouter</string>
+
+    <string name="settings_title">Parametres</string>
+    <string name="settings_language">Langue</string>
+    <string name="settings_language_description">Choisissez la langue de l application.</string>
+    <string name="settings_english">Anglais</string>
+    <string name="settings_french">Francais</string>
+    <string name="settings_backup">Sauvegarde</string>
+    <string name="settings_backup_description">Creez une sauvegarde ZIP de la base locale (y compris les donnees WAL) et enregistrez-la dans Google Drive (ou un autre fournisseur de documents).</string>
+    <string name="settings_backup_to_drive">Sauvegarder la base dans Drive</string>
+    <string name="settings_restore_from_drive">Restaurer la base depuis Drive</string>
+    <string name="backup_in_progress">Sauvegarde en cours...</string>
+    <string name="backup_success">Sauvegarde terminee avec succes.</string>
+    <string name="backup_failed">Echec de la sauvegarde : %1$s</string>
+    <string name="backup_db_not_found">Le fichier de base locale est introuvable.</string>
+    <string name="backup_cannot_open_destination">Impossible d ouvrir le fichier de destination.</string>
+    <string name="restore_in_progress">Restauration en cours...</string>
+    <string name="restore_success_restart_required">Restauration terminee. Veuillez redemarrer l application.</string>
+    <string name="restore_failed">Echec de la restauration : %1$s</string>
+    <string name="restore_cannot_open_source">Impossible d ouvrir le fichier de sauvegarde selectionne.</string>
+    <string name="restore_missing_db_entry">L archive de sauvegarde ne contient pas le fichier principal de base de donnees.</string>
+    <string name="restart_app_now">Redemarrer l application</string>
+    <string name="support_kofi_message">Si vous le souhaitez, vous pouvez me soutenir sur Ko-Fi</string>
+    <string name="support_kofi_button">Soutenir sur Ko-Fi</string>
+
+    <string name="error_enter_url">Veuillez saisir une URL</string>
+    <string name="error_extract_recipe">Impossible d extraire la recette depuis cette page.</string>
+    <string name="error_fetch_page">Echec du chargement de la page : %1$s</string>
+    <string name="error_save">Echec de l enregistrement : %1$s</string>
+    <string name="error_no_url_in_shared_content">Aucune URL trouvee dans le contenu partage.</string>
+    <string name="error_recipe_not_found">Recette introuvable</string>
+    <string name="error_save_image">Echec de l enregistrement de l image : %1$s</string>
+    <string name="error_title_required">Le titre est obligatoire</string>
+
+    <string name="remove_tag">Supprimer %1$s</string>
+
+    <string name="share_ingredients_header">INGREDIENTS</string>
+    <string name="share_instructions_header">INSTRUCTIONS</string>
+    <string name="share_total_time">Temps total : %1$s</string>
+    <string name="share_servings">Portions : %1$d</string>
+    <string name="share_source">Source : %1$s</string>
+    <string name="share_recipe">Partager la recette</string>
+    <string name="icon_credit_text">Icones cuisine creees par pmicon - Flaticon (https://www.flaticon.com/free-icons/cuisine)</string>
+</resources>

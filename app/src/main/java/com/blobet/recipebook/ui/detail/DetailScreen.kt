@@ -1,0 +1,366 @@
+package com.blobet.recipebook.ui.detail
+
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.RestaurantMenu
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Divider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImage
+import com.blobet.recipebook.R
+import com.blobet.recipebook.ui.components.IngredientList
+import com.blobet.recipebook.ui.components.ServingScaler
+import com.blobet.recipebook.ui.components.TagChips
+import com.blobet.recipebook.util.ShareUtils
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DetailScreen(
+    onNavigateBack: () -> Unit,
+    onEditClick: (Long) -> Unit,
+    viewModel: DetailViewModel = hiltViewModel(),
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(uiState.isDeleted) {
+        if (uiState.isDeleted) {
+            onNavigateBack()
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(uiState.recipe?.title ?: "") },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.back))
+                    }
+                },
+                actions = {
+                    val recipe = uiState.recipe
+                    if (recipe != null) {
+                        IconButton(onClick = { viewModel.onToggleFavorite() }) {
+                            Icon(
+                                imageVector = if (recipe.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                contentDescription = stringResource(R.string.detail_toggle_favorite),
+                                tint = if (recipe.isFavorite) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+                            )
+                        }
+                        IconButton(onClick = { ShareUtils.shareRecipe(context, recipe) }) {
+                            Icon(Icons.Default.Share, contentDescription = stringResource(R.string.share))
+                        }
+                        IconButton(onClick = { onEditClick(recipe.id) }) {
+                            Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.edit))
+                        }
+                        IconButton(onClick = { showDeleteDialog = true }) {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = stringResource(R.string.delete),
+                                tint = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                    }
+                },
+            )
+        },
+    ) { padding ->
+        val recipe = uiState.recipe
+
+        if (uiState.isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator()
+            }
+        } else if (recipe == null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(stringResource(R.string.recipe_not_found))
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                // Hero image
+                val imageModel = recipe.displayImage
+                if (imageModel != null) {
+                    AsyncImage(
+                        model = imageModel,
+                        contentDescription = recipe.title,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(16f / 9f)
+                            .clip(MaterialTheme.shapes.medium),
+                        contentScale = ContentScale.Crop,
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(16f / 9f),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.RestaurantMenu,
+                            contentDescription = null,
+                            modifier = Modifier.size(64.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                        )
+                    }
+                }
+
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    // Title
+                    Text(
+                        text = recipe.title,
+                        style = MaterialTheme.typography.headlineMedium,
+                    )
+
+                    // Description
+                    if (recipe.description.isNotBlank()) {
+                        Text(
+                            text = recipe.description,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+
+                    // Time info
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(24.dp),
+                    ) {
+                        recipe.prepTimeMinutes?.let { prep ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
+                                Icon(
+                                    Icons.Default.Timer,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                    tint = MaterialTheme.colorScheme.primary,
+                                )
+                                Text(
+                                    text = stringResource(R.string.label_prep, formatTime(prep)),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                )
+                            }
+                        }
+                        recipe.cookTimeMinutes?.let { cook ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
+                                Icon(
+                                    Icons.Default.Timer,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                    tint = MaterialTheme.colorScheme.tertiary,
+                                )
+                                Text(
+                                    text = stringResource(R.string.label_cook, formatTime(cook)),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                )
+                            }
+                        }
+                    }
+
+                    // Tags
+                    if (recipe.tags.isNotEmpty()) {
+                        TagChips(tags = recipe.tags)
+                    }
+
+                    // Source URL
+                    if (!recipe.sourceUrl.isNullOrBlank()) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Icon(
+                                Icons.Default.Link,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
+                            TextButton(
+                                onClick = {
+                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(recipe.sourceUrl))
+                                    context.startActivity(intent)
+                                }
+                            ) {
+                                Text(
+                                    stringResource(R.string.view_original_recipe),
+                                    style = MaterialTheme.typography.labelLarge,
+                                )
+                            }
+                        }
+                    }
+
+                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+
+                    // Ingredients
+                    if (recipe.ingredients.isNotEmpty()) {
+                        Text(
+                            text = stringResource(R.string.ingredients),
+                            style = MaterialTheme.typography.titleLarge,
+                        )
+
+                        ServingScaler(
+                            originalServings = recipe.servings,
+                            currentServings = uiState.currentServings,
+                            onServingsChange = viewModel::onServingsChange,
+                        )
+
+                        IngredientList(
+                            ingredients = recipe.ingredients,
+                            originalServings = recipe.servings,
+                            currentServings = uiState.currentServings,
+                        )
+
+                        Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    }
+
+                    // Instructions
+                    if (recipe.instructions.isNotEmpty()) {
+                        Text(
+                            text = stringResource(R.string.instructions),
+                            style = MaterialTheme.typography.titleLarge,
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        recipe.instructions.forEachIndexed { index, step ->
+                            if (step.startsWith("---") && step.endsWith("---")) {
+                                // Section header
+                                Text(
+                                    text = step.removePrefix("---").removeSuffix("---").trim(),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                            } else {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 6.dp),
+                                ) {
+                                    Text(
+                                        text = "${index + 1}.",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.padding(end = 12.dp),
+                                    )
+                                    Text(
+                                        text = step,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(32.dp))
+                }
+            }
+        }
+    }
+
+    // Delete confirmation dialog
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text(stringResource(R.string.delete_recipe_title)) },
+            text = { Text(stringResource(R.string.delete_recipe_confirmation)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteDialog = false
+                        viewModel.onDeleteRecipe()
+                    }
+                ) {
+                    Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
+    }
+}
+
+private fun formatTime(minutes: Int): String {
+    return when {
+        minutes < 60 -> "${minutes} min"
+        minutes % 60 == 0 -> "${minutes / 60}h"
+        else -> "${minutes / 60}h ${minutes % 60}min"
+    }
+}
