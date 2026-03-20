@@ -58,6 +58,13 @@
 
     <string name="detail_toggle_favorite">Toggle favorite</string>
     <string name="share">Share</string>
+    <string name="share_recipe_url">Share Recipe URL</string>
+    <string name="share_recipe_file">Share Recipe File</string>
+    <string name="share_option_full_text">Share full recipe text</string>
+    <string name="share_option_url_only">Share source URL only</string>
+    <string name="share_option_recipe_file">Share as Recipe Book file</string>
+    <string name="share_url_missing">No source URL available for this recipe.</string>
+    <string name="share_file_failed">Could not create recipe file.</string>
     <string name="edit">Edit</string>
     <string name="delete">Delete</string>
     <string name="add_to_favorites">Add to favorites</string>
@@ -127,6 +134,8 @@
     <string name="error_no_url_in_shared_content">No URL found in shared content.</string>
     <string name="error_tiktok_no_description">Could not find TikTok description text to parse.</string>
     <string name="error_tiktok_fetch">Failed to fetch TikTok page: %1$s</string>
+    <string name="error_site_forbidden">This website blocks automated access (HTTP 403). Try opening the page in a browser and paste the recipe text in the optional description field.</string>
+    <string name="error_invalid_recipe_file">Invalid shared recipe file.</string>
     <string name="error_recipe_not_found">Recipe not found</string>
     <string name="error_save_image">Failed to save image: %1$s</string>
     <string name="error_title_required">Title is required</string>
@@ -139,5 +148,6 @@
     <string name="share_servings">Servings: %1$d</string>
     <string name="share_source">Source: %1$s</string>
     <string name="share_recipe">Share Recipe</string>
+    <string name="share_recipe_file_chooser">Share Recipe Book File</string>
     <string name="icon_credit_text">Cuisine icons created by pmicon - Flaticon (https://www.flaticon.com/free-icons/cuisine)</string>
 </resources>

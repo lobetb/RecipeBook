@@ -21,18 +21,33 @@ import com.blobet.recipebook.ui.settings.SettingsScreen
 import com.blobet.recipebook.ui.splash.SplashScreen
 
 @Composable
-fun NavGraph(sharedText: String? = null) {
+fun NavGraph(
+    sharedText: String? = null,
+    sharedRecipePayloadJson: String? = null,
+) {
     val navController = rememberNavController()
-    val hasSharedUrl = !sharedText.isNullOrBlank()
-    val startDestination = if (hasSharedUrl) Screen.ImportRecipe.route else Screen.Splash.route
+    val hasSharedImport = !sharedText.isNullOrBlank() || !sharedRecipePayloadJson.isNullOrBlank()
+    val startDestination = if (hasSharedImport) Screen.ImportRecipe.route else Screen.Splash.route
     var pendingSharedText by remember { mutableStateOf<String?>(sharedText) }
+    var pendingSharedRecipePayloadJson by remember { mutableStateOf<String?>(sharedRecipePayloadJson) }
     var lastHandledShare by remember { mutableStateOf<String?>(null) }
     val latestSharedText: State<String?> = rememberUpdatedState(sharedText)
+    val latestSharedRecipePayload: State<String?> = rememberUpdatedState(sharedRecipePayloadJson)
 
     LaunchedEffect(sharedText) {
         val incoming = sharedText?.takeIf { it.isNotBlank() } ?: return@LaunchedEffect
         if (incoming != lastHandledShare) {
             pendingSharedText = incoming
+            navController.navigate(Screen.ImportRecipe.route) {
+                launchSingleTop = true
+            }
+        }
+    }
+
+    LaunchedEffect(sharedRecipePayloadJson) {
+        val incoming = sharedRecipePayloadJson?.takeIf { it.isNotBlank() } ?: return@LaunchedEffect
+        if (incoming != lastHandledShare) {
+            pendingSharedRecipePayloadJson = incoming
             navController.navigate(Screen.ImportRecipe.route) {
                 launchSingleTop = true
             }
@@ -117,6 +132,9 @@ fun NavGraph(sharedText: String? = null) {
             val incomingSharedText = pendingSharedText
                 ?: latestSharedText.value
                 ?: ""
+            val incomingSharedRecipePayload = pendingSharedRecipePayloadJson
+                ?: latestSharedRecipePayload.value
+                ?: ""
 
             ImportScreen(
                 onNavigateBack = {
@@ -133,12 +151,17 @@ fun NavGraph(sharedText: String? = null) {
                     navController.navigate(Screen.RecipeDetail.createRoute(recipeId))
                 },
                 sharedUrl = incomingSharedText,
+                sharedRecipePayloadJson = incomingSharedRecipePayload,
             )
 
-            LaunchedEffect(incomingSharedText) {
+            LaunchedEffect(incomingSharedText, incomingSharedRecipePayload) {
                 if (incomingSharedText.isNotBlank()) {
                     lastHandledShare = incomingSharedText
                     pendingSharedText = null
+                }
+                if (incomingSharedRecipePayload.isNotBlank()) {
+                    lastHandledShare = incomingSharedRecipePayload
+                    pendingSharedRecipePayloadJson = null
                 }
             }
         }

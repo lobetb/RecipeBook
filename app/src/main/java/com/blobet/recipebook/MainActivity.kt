@@ -1,6 +1,7 @@
 package com.blobet.recipebook
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,11 +14,13 @@ import androidx.compose.ui.Modifier
 import androidx.appcompat.app.AppCompatActivity
 import com.blobet.recipebook.ui.navigation.NavGraph
 import com.blobet.recipebook.ui.theme.RecipeBookTheme
+import com.blobet.recipebook.util.RecipeShareCodec
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
     private var sharedText by mutableStateOf<String?>(null)
+    private var sharedRecipePayloadJson by mutableStateOf<String?>(null)
     private val urlRegex = Regex("""https?://[^\s]+""", RegexOption.IGNORE_CASE)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -30,7 +33,10 @@ class MainActivity : AppCompatActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    NavGraph(sharedText = sharedText)
+                    NavGraph(
+                        sharedText = sharedText,
+                        sharedRecipePayloadJson = sharedRecipePayloadJson,
+                    )
                 }
             }
         }
@@ -47,12 +53,35 @@ class MainActivity : AppCompatActivity() {
     private fun handleShareIntent(intent: Intent) {
         val action = intent.action
 
-        if (action == Intent.ACTION_SEND && intent.type == "text/plain") {
+        if (action == Intent.ACTION_SEND) {
+            val payloadJson = extractSharedRecipePayload(intent)
+            if (!payloadJson.isNullOrBlank()) {
+                sharedRecipePayloadJson = payloadJson
+                return
+            }
+
+            val text = extractSharedText(intent)
+            if (!text.isNullOrBlank()) {
+                sharedText = text
+            }
+        } else if (action == Intent.ACTION_SEND_MULTIPLE) {
+            val payloadJson = extractSharedRecipePayloadFromMultiple(intent)
+            if (!payloadJson.isNullOrBlank()) {
+                sharedRecipePayloadJson = payloadJson
+                return
+            }
+
             val text = extractSharedText(intent)
             if (!text.isNullOrBlank()) {
                 sharedText = text
             }
         } else if (action == Intent.ACTION_VIEW) {
+            val payloadJson = extractViewedRecipePayload(intent)
+            if (!payloadJson.isNullOrBlank()) {
+                sharedRecipePayloadJson = payloadJson
+                return
+            }
+
             val data = intent.dataString
             if (!data.isNullOrBlank()) {
                 sharedText = data
@@ -110,4 +139,45 @@ class MainActivity : AppCompatActivity() {
 
         return intent.dataString
     }
+
+    private fun readTextFromUri(uri: Uri): String? {
+        return try {
+            contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun extractSharedRecipePayload(intent: Intent): String? {
+        val uri = intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
+            ?: intent.clipData?.getItemAt(0)?.uri
+            ?: return null
+        return readValidatedRecipePayload(uri)
+    }
+
+    private fun extractViewedRecipePayload(intent: Intent): String? {
+        val uri = intent.data ?: return null
+        return readValidatedRecipePayload(uri)
+    }
+
+    private fun extractSharedRecipePayloadFromMultiple(intent: Intent): String? {
+        val uris = intent.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM)
+            ?: return null
+        uris.forEach { uri ->
+            val payload = readValidatedRecipePayload(uri)
+            if (!payload.isNullOrBlank()) return payload
+        }
+        return null
+    }
+
+    private fun readValidatedRecipePayload(uri: Uri): String? {
+        val raw = readTextFromUri(uri) ?: return null
+        return try {
+            RecipeShareCodec.decode(raw)
+            raw
+        } catch (_: Exception) {
+            null
+        }
+    }
+
 }

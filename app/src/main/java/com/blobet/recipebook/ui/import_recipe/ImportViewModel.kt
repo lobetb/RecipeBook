@@ -7,6 +7,7 @@ import com.blobet.recipebook.R
 import com.blobet.recipebook.data.parser.RecipeParser
 import com.blobet.recipebook.data.repository.RecipeRepository
 import com.blobet.recipebook.domain.model.Recipe
+import com.blobet.recipebook.util.RecipeShareCodec
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -87,6 +88,25 @@ class ImportViewModel @Inject constructor(
         fetchAndParse()
     }
 
+    fun importSharedRecipePayload(payloadJson: String) {
+        if (_uiState.value.isLoading || _uiState.value.parsedRecipe != null) return
+
+        try {
+            val payload = RecipeShareCodec.decode(payloadJson)
+            val recipe = payload.toRecipe()
+            _uiState.update {
+                it.copy(
+                    parsedRecipe = recipe,
+                    errorMessage = null,
+                    isLoading = false,
+                    url = recipe.sourceUrl.orEmpty(),
+                )
+            }
+        } catch (_: Exception) {
+            _uiState.update { it.copy(errorMessage = context.getString(R.string.error_invalid_recipe_file)) }
+        }
+    }
+
     fun fetchAndParse() {
         val url = _uiState.value.url.trim()
         if (url.isBlank()) {
@@ -139,13 +159,21 @@ class ImportViewModel @Inject constructor(
                     }
                 }
             } catch (e: Exception) {
+                val friendlyMessage = when {
+                    e is HttpStatusException && e.statusCode == 403 -> {
+                        context.getString(R.string.error_site_forbidden)
+                    }
+                    else -> {
+                        context.getString(
+                            R.string.error_fetch_page,
+                            e.message ?: e.javaClass.simpleName,
+                        )
+                    }
+                }
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = context.getString(
-                            R.string.error_fetch_page,
-                            e.message ?: e.javaClass.simpleName,
-                        ),
+                        errorMessage = friendlyMessage,
                     )
                 }
             }
@@ -193,7 +221,7 @@ class ImportViewModel @Inject constructor(
                 }
 
                 if (responseCode != 200) {
-                    throw Exception("HTTP $responseCode: ${connection.responseMessage}")
+                    throw HttpStatusException(responseCode, "HTTP $responseCode: ${connection.responseMessage}")
                 }
 
                 return connection.inputStream.bufferedReader().use { it.readText() }
@@ -457,4 +485,9 @@ class ImportViewModel @Inject constructor(
             ?: return null
         return match.value.trim().trimEnd('.', ',', ';', ')', ']', '"', '\'')
     }
+
+    private class HttpStatusException(
+        val statusCode: Int,
+        message: String,
+    ) : Exception(message)
 }

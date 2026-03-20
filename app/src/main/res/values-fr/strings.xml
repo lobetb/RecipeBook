@@ -58,6 +58,13 @@
 
     <string name="detail_toggle_favorite">Basculer favori</string>
     <string name="share">Partager</string>
+    <string name="share_recipe_url">Partager l URL de la recette</string>
+    <string name="share_recipe_file">Partager le fichier de recette</string>
+    <string name="share_option_full_text">Partager le texte complet de la recette</string>
+    <string name="share_option_url_only">Partager uniquement l URL source</string>
+    <string name="share_option_recipe_file">Partager en fichier Recipe Book</string>
+    <string name="share_url_missing">Aucune URL source disponible pour cette recette.</string>
+    <string name="share_file_failed">Impossible de creer le fichier recette.</string>
     <string name="edit">Modifier</string>
     <string name="delete">Supprimer</string>
     <string name="add_to_favorites">Ajouter aux favoris</string>
@@ -127,6 +134,8 @@
     <string name="error_no_url_in_shared_content">Aucune URL trouvee dans le contenu partage.</string>
     <string name="error_tiktok_no_description">Impossible de trouver une description TikTok a analyser.</string>
     <string name="error_tiktok_fetch">Echec du chargement de la page TikTok : %1$s</string>
+    <string name="error_site_forbidden">Ce site bloque l acces automatise (HTTP 403). Ouvrez la page dans un navigateur puis collez le texte de la recette dans le champ descriptif optionnel.</string>
+    <string name="error_invalid_recipe_file">Fichier de recette partage invalide.</string>
     <string name="error_recipe_not_found">Recette introuvable</string>
     <string name="error_save_image">Echec de l enregistrement de l image : %1$s</string>
     <string name="error_title_required">Le titre est obligatoire</string>
@@ -139,5 +148,6 @@
     <string name="share_servings">Portions : %1$d</string>
     <string name="share_source">Source : %1$s</string>
     <string name="share_recipe">Partager la recette</string>
+    <string name="share_recipe_file_chooser">Partager le fichier Recipe Book</string>
     <string name="icon_credit_text">Icones cuisine creees par pmicon - Flaticon (https://www.flaticon.com/free-icons/cuisine)</string>
 </resources>

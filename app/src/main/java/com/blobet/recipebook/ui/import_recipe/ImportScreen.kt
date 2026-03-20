@@ -61,6 +61,7 @@ fun ImportScreen(
     onNavigateBack: () -> Unit,
     onRecipeImported: (Long) -> Unit,
     sharedUrl: String = "",
+    sharedRecipePayloadJson: String = "",
     viewModel: ImportViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -85,6 +86,12 @@ fun ImportScreen(
     LaunchedEffect(sharedUrl) {
         if (sharedUrl.isNotBlank()) {
             viewModel.importSharedUrl(sharedUrl)
+        }
+    }
+
+    LaunchedEffect(sharedRecipePayloadJson) {
+        if (sharedRecipePayloadJson.isNotBlank()) {
+            viewModel.importSharedRecipePayload(sharedRecipePayloadJson)
         }
     }
 

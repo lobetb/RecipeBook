@@ -2,6 +2,7 @@ package com.blobet.recipebook.ui.detail
 
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -50,6 +51,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
@@ -69,6 +71,7 @@ fun DetailScreen(
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showShareDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiState.isDeleted) {
         if (uiState.isDeleted) {
@@ -95,7 +98,7 @@ fun DetailScreen(
                                 tint = if (recipe.isFavorite) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
                             )
                         }
-                        IconButton(onClick = { ShareUtils.shareRecipe(context, recipe) }) {
+                        IconButton(onClick = { showShareDialog = true }) {
                             Icon(Icons.Default.Share, contentDescription = stringResource(R.string.share))
                         }
                         IconButton(onClick = { onEditClick(recipe.id) }) {
@@ -354,6 +357,73 @@ fun DetailScreen(
                 }
             },
         )
+    }
+
+    if (showShareDialog) {
+        val recipe = uiState.recipe
+        if (recipe != null) {
+            AlertDialog(
+                onDismissRequest = { showShareDialog = false },
+                title = { Text(stringResource(R.string.share_recipe)) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextButton(
+                            onClick = {
+                                showShareDialog = false
+                                ShareUtils.shareRecipe(context, recipe)
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(
+                                text = stringResource(R.string.share_option_full_text),
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.Start,
+                            )
+                        }
+
+                        TextButton(
+                            onClick = {
+                                showShareDialog = false
+                                val ok = ShareUtils.shareRecipeUrl(context, recipe)
+                                if (!ok) {
+                                    Toast.makeText(context, context.getString(R.string.share_url_missing), Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(
+                                text = stringResource(R.string.share_option_url_only),
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.Start,
+                            )
+                        }
+
+                        TextButton(
+                            onClick = {
+                                showShareDialog = false
+                                val ok = ShareUtils.shareRecipeAsFile(context, recipe)
+                                if (!ok) {
+                                    Toast.makeText(context, context.getString(R.string.share_file_failed), Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(
+                                text = stringResource(R.string.share_option_recipe_file),
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.Start,
+                            )
+                        }
+                    }
+                },
+                confirmButton = {},
+                dismissButton = {
+                    TextButton(onClick = { showShareDialog = false }) {
+                        Text(stringResource(R.string.cancel))
+                    }
+                },
+            )
+        }
     }
 }
 
