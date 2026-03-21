@@ -7,6 +7,7 @@
     <string name="home_sort_recipes">Trier les recettes</string>
     <string name="home_layout_options">Options de vue</string>
     <string name="home_settings">Parametres</string>
+    <string name="home_shopping_list">Liste de courses</string>
     <string name="home_import_from_url">Importer depuis une URL</string>
     <string name="home_create_manually">Creer manuellement</string>
     <string name="home_add_recipe">Ajouter une recette</string>
@@ -69,6 +70,7 @@
     <string name="delete">Supprimer</string>
     <string name="add_to_favorites">Ajouter aux favoris</string>
     <string name="remove_from_favorites">Retirer des favoris</string>
+    <string name="add_to_shopping_list">Ajouter a la liste de courses</string>
     <string name="recipe_not_found">Recette introuvable</string>
     <string name="view_original_recipe">Voir la recette d origine</string>
     <string name="ingredients">Ingredients</string>
@@ -78,6 +80,9 @@
     <string name="cancel">Annuler</string>
 
     <string name="servings">Portions</string>
+    <string name="units_original">Original</string>
+    <string name="units_metric">Metrique</string>
+    <string name="units_imperial">Imperial</string>
     <string name="decrease_servings">Diminuer les portions</string>
     <string name="increase_servings">Augmenter les portions</string>
     <string name="servings_original">(a l origine %1$d)</string>
@@ -127,6 +132,18 @@
     <string name="support_kofi_message">Si vous le souhaitez, vous pouvez me soutenir sur Ko-Fi</string>
     <string name="support_kofi_button">Soutenir sur Ko-Fi</string>
 
+    <string name="shopping_list_title">Liste de courses</string>
+    <string name="shopping_list_empty">Votre liste de courses est vide. Ajoutez des ingredients depuis les fiches recette.</string>
+    <string name="shopping_list_clear_all">Tout effacer</string>
+    <string name="shopping_list_clear_all_title">Effacer la liste de courses</string>
+    <string name="shopping_list_clear_all_message">Supprimer tous les elements de votre liste de courses ?</string>
+    <string name="shopping_list_name">Ingredient</string>
+    <string name="shopping_list_quantity">Quantite</string>
+    <string name="shopping_list_unit">Unite</string>
+    <string name="shopping_list_checked">Achete</string>
+    <string name="shopping_list_unchecked">A acheter</string>
+    <string name="shopping_list_save_item">Enregistrer</string>
+
     <string name="error_enter_url">Veuillez saisir une URL</string>
     <string name="error_extract_recipe">Impossible d extraire la recette depuis cette page.</string>
     <string name="error_fetch_page">Echec du chargement de la page : %1$s</string>
@@ -141,6 +158,8 @@
     <string name="error_title_required">Le titre est obligatoire</string>
 
     <string name="remove_tag">Supprimer %1$s</string>
+    <string name="detail_add_tag">Ajouter une etiquette</string>
+    <string name="detail_add_tag_button">Ajouter cette etiquette</string>
 
     <string name="share_ingredients_header">INGREDIENTS</string>
     <string name="share_instructions_header">INSTRUCTIONS</string>

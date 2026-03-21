@@ -6,6 +6,8 @@ import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -28,11 +30,14 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -59,9 +64,10 @@ import com.blobet.recipebook.R
 import com.blobet.recipebook.ui.components.IngredientList
 import com.blobet.recipebook.ui.components.ServingScaler
 import com.blobet.recipebook.ui.components.TagChips
+import com.blobet.recipebook.ui.components.UnitSystemToggle
 import com.blobet.recipebook.util.ShareUtils
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun DetailScreen(
     onNavigateBack: () -> Unit,
@@ -72,6 +78,8 @@ fun DetailScreen(
     val context = LocalContext.current
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showShareDialog by remember { mutableStateOf(false) }
+    var showNewTagDialog by remember { mutableStateOf(false) }
+    var newTagName by remember { mutableStateOf("") }
 
     LaunchedEffect(uiState.isDeleted) {
         if (uiState.isDeleted) {
@@ -230,11 +238,6 @@ fun DetailScreen(
                         }
                     }
 
-                    // Tags
-                    if (recipe.tags.isNotEmpty()) {
-                        TagChips(tags = recipe.tags)
-                    }
-
                     // Source URL
                     if (!recipe.sourceUrl.isNullOrBlank()) {
                         Row(
@@ -264,6 +267,26 @@ fun DetailScreen(
                         }
                     }
 
+                    Text(
+                        text = stringResource(R.string.tags),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+
+                    if (recipe.tags.isNotEmpty()) {
+                        TagChips(
+                            tags = recipe.tags,
+                            onRemoveTag = viewModel::onRemoveTag,
+                        )
+                    }
+
+                    OutlinedButton(
+                        onClick = { showNewTagDialog = true },
+                    ) {
+                        Icon(Icons.Default.Edit, contentDescription = null)
+                        Spacer(modifier = Modifier.size(8.dp))
+                        Text(stringResource(R.string.new_tag))
+                    }
+
                     Divider(modifier = Modifier.padding(vertical = 8.dp))
 
                     // Ingredients
@@ -279,10 +302,18 @@ fun DetailScreen(
                             onServingsChange = viewModel::onServingsChange,
                         )
 
+                        UnitSystemToggle(
+                            selected = uiState.unitSystem,
+                            onSelected = viewModel::onUnitSystemChange,
+                        )
+
                         IngredientList(
                             ingredients = recipe.ingredients,
                             originalServings = recipe.servings,
                             currentServings = uiState.currentServings,
+                            unitSystem = uiState.unitSystem,
+                            addedIngredientKeys = uiState.addedIngredientKeys,
+                            onAddIngredient = viewModel::onAddIngredientToShoppingList,
                         )
 
                         Divider(modifier = Modifier.padding(vertical = 8.dp))
@@ -424,6 +455,104 @@ fun DetailScreen(
                 },
             )
         }
+    }
+
+    if (showNewTagDialog) {
+        val recipe = uiState.recipe
+        val builtInTagNames = listOf(
+            stringResource(R.string.type_breakfast),
+            stringResource(R.string.type_lunch),
+            stringResource(R.string.type_dinner),
+            stringResource(R.string.type_dessert),
+            stringResource(R.string.type_snack),
+            stringResource(R.string.type_soup),
+            stringResource(R.string.type_salad),
+            stringResource(R.string.type_side),
+            stringResource(R.string.type_drink),
+        )
+
+        val suggestions = remember(newTagName, uiState.availableTags, recipe?.tags) {
+            val query = newTagName.trim()
+            if (query.isBlank() || recipe == null) {
+                emptyList()
+            } else {
+                val existingTagKeys = recipe.tags.map { it.name.trim().lowercase() }.toSet()
+                (uiState.availableTags.map { it.name } + builtInTagNames)
+                    .distinctBy { it.trim().lowercase() }
+                    .filter { name ->
+                        name.contains(query, ignoreCase = true) &&
+                            name.trim().lowercase() !in existingTagKeys
+                    }
+                    .sortedBy { name ->
+                        val lower = name.lowercase()
+                        val q = query.lowercase()
+                        when {
+                            lower == q -> 0
+                            lower.startsWith(q) -> 1
+                            else -> 2
+                        }
+                    }
+                    .take(6)
+            }
+        }
+
+        AlertDialog(
+            onDismissRequest = {
+                showNewTagDialog = false
+                newTagName = ""
+            },
+            title = { Text(stringResource(R.string.new_tag)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = newTagName,
+                        onValueChange = { newTagName = it },
+                        label = { Text(stringResource(R.string.tag_name)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+
+                    if (suggestions.isNotEmpty()) {
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            suggestions.forEach { suggestion ->
+                                FilterChip(
+                                    selected = false,
+                                    onClick = {
+                                        viewModel.createAndAddTag(suggestion)
+                                        newTagName = ""
+                                        showNewTagDialog = false
+                                    },
+                                    label = { Text(suggestion) },
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.createAndAddTag(newTagName)
+                        newTagName = ""
+                        showNewTagDialog = false
+                    },
+                    enabled = newTagName.isNotBlank(),
+                ) {
+                    Text(stringResource(R.string.add))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showNewTagDialog = false
+                    newTagName = ""
+                }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
     }
 }
 

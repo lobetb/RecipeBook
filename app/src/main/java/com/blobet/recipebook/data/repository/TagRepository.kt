@@ -24,12 +24,27 @@ class TagRepository @Inject constructor(
     }
 
     suspend fun createTag(name: String): Tag {
-        val existing = tagDao.getTagByName(name)
+        val normalizedName = normalizeTagKey(name)
+        require(normalizedName.isNotBlank()) { "Tag name cannot be blank" }
+
+        val existingByQuery = tagDao.getTagByName(name.trim())
+        if (existingByQuery != null) return existingByQuery.toDomainModel()
+
+        val existingByNormalizedKey = tagDao.getAllTagsOnce()
+            .firstOrNull { entity -> normalizeTagKey(entity.name) == normalizedName }
+        if (existingByNormalizedKey != null) return existingByNormalizedKey.toDomainModel()
+
+        val canonicalName = name.trim().replace(Regex("\\s+"), " ")
+        val existing = tagDao.getTagByName(canonicalName)
         if (existing != null) return existing.toDomainModel()
 
-        val tag = Tag(name = name)
+        val tag = Tag(name = canonicalName)
         val id = tagDao.insertTag(tag.toEntity())
         return tag.copy(id = id)
+    }
+
+    private fun normalizeTagKey(value: String): String {
+        return value.trim().replace(Regex("\\s+"), " ").lowercase()
     }
 
     suspend fun deleteTag(id: Long) {

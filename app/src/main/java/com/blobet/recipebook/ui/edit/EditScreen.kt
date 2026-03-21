@@ -355,6 +355,41 @@ fun EditScreen(
 
     // New tag dialog
     if (showNewTagDialog) {
+        val builtInTagNames = listOf(
+            stringResource(R.string.type_breakfast),
+            stringResource(R.string.type_lunch),
+            stringResource(R.string.type_dinner),
+            stringResource(R.string.type_dessert),
+            stringResource(R.string.type_snack),
+            stringResource(R.string.type_soup),
+            stringResource(R.string.type_salad),
+            stringResource(R.string.type_side),
+            stringResource(R.string.type_drink),
+        )
+
+        val suggestions = remember(newTagName, uiState.availableTags, uiState.selectedTagIds) {
+            val query = newTagName.trim()
+            if (query.isBlank()) {
+                emptyList()
+            } else {
+                (uiState.availableTags.map { it.name } + builtInTagNames)
+                    .distinctBy { it.trim().lowercase() }
+                    .filter { name ->
+                        name.contains(query, ignoreCase = true)
+                    }
+                    .sortedBy { name ->
+                        val lower = name.lowercase()
+                        val q = query.lowercase()
+                        when {
+                            lower == q -> 0
+                            lower.startsWith(q) -> 1
+                            else -> 2
+                        }
+                    }
+                    .take(6)
+            }
+        }
+
         AlertDialog(
             onDismissRequest = {
                 showNewTagDialog = false
@@ -362,12 +397,34 @@ fun EditScreen(
             },
             title = { Text(stringResource(R.string.new_tag)) },
             text = {
-                OutlinedTextField(
-                    value = newTagName,
-                    onValueChange = { newTagName = it },
-                    label = { Text(stringResource(R.string.tag_name)) },
-                    singleLine = true,
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = newTagName,
+                        onValueChange = { newTagName = it },
+                        label = { Text(stringResource(R.string.tag_name)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+
+                    if (suggestions.isNotEmpty()) {
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            suggestions.forEach { suggestion ->
+                                FilterChip(
+                                    selected = false,
+                                    onClick = {
+                                        viewModel.createAndSelectTag(suggestion)
+                                        newTagName = ""
+                                        showNewTagDialog = false
+                                    },
+                                    label = { Text(suggestion) },
+                                )
+                            }
+                        }
+                    }
+                }
             },
             confirmButton = {
                 TextButton(

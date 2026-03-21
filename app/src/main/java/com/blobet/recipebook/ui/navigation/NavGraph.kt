@@ -18,6 +18,7 @@ import com.blobet.recipebook.ui.edit.EditScreen
 import com.blobet.recipebook.ui.home.HomeScreen
 import com.blobet.recipebook.ui.import_recipe.ImportScreen
 import com.blobet.recipebook.ui.settings.SettingsScreen
+import com.blobet.recipebook.ui.shopping_list.ShoppingListScreen
 import com.blobet.recipebook.ui.splash.SplashScreen
 
 @Composable
@@ -78,6 +79,9 @@ fun NavGraph(
                 },
                 onImportRecipeClick = {
                     navController.navigate(Screen.ImportRecipe.route)
+                },
+                onShoppingListClick = {
+                    navController.navigate(Screen.ShoppingList.route)
                 },
                 onSettingsClick = {
                     navController.navigate(Screen.Settings.route)
@@ -169,6 +173,12 @@ fun NavGraph(
         composable(Screen.Settings.route) {
             SettingsScreen(
                 onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.ShoppingList.route) {
+            ShoppingListScreen(
+                onNavigateBack = { navController.popBackStack() },
             )
         }
     }

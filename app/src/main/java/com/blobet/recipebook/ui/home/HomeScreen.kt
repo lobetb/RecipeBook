@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -68,6 +69,7 @@ fun HomeScreen(
     onRecipeClick: (Long) -> Unit,
     onAddRecipeClick: () -> Unit,
     onImportRecipeClick: () -> Unit,
+    onShoppingListClick: () -> Unit,
     onSettingsClick: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
@@ -141,6 +143,12 @@ fun HomeScreen(
                                 )
                             }
                         }
+                    }
+                    IconButton(onClick = onShoppingListClick) {
+                        Icon(
+                            imageVector = Icons.Default.ShoppingCart,
+                            contentDescription = stringResource(R.string.home_shopping_list),
+                        )
                     }
                     IconButton(onClick = onSettingsClick) {
                         Icon(

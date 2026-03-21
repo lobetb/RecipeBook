@@ -203,9 +203,13 @@ class EditViewModel @Inject constructor(
     }
 
     fun createAndSelectTag(name: String) {
+        val trimmed = name.trim()
+        if (trimmed.isBlank()) return
+
         viewModelScope.launch {
-            val tag = tagRepository.createTag(name)
+            val tag = tagRepository.createTag(trimmed)
             _uiState.update { state ->
+                if (tag.id in state.selectedTagIds) return@update state
                 state.copy(selectedTagIds = state.selectedTagIds + tag.id)
             }
         }

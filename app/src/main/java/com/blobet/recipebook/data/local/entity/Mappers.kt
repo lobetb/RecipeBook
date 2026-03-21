@@ -4,6 +4,7 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.blobet.recipebook.domain.model.Ingredient
 import com.blobet.recipebook.domain.model.Recipe
+import com.blobet.recipebook.domain.model.ShoppingListItem
 import com.blobet.recipebook.domain.model.Tag
 
 private val gson = Gson()
@@ -89,5 +90,38 @@ fun Tag.toEntity(): TagEntity {
     return TagEntity(
         id = id,
         name = name,
+    )
+}
+
+fun ShoppingListItemEntity.toDomainModel(): ShoppingListItem {
+    return ShoppingListItem(
+        id = id,
+        name = name,
+        quantity = quantity,
+        unit = unit,
+        isChecked = isChecked,
+        sourceRecipeId = sourceRecipeId,
+        sourceRecipeTitle = sourceRecipeTitle,
+        createdAt = createdAt,
+        updatedAt = updatedAt,
+    )
+}
+
+fun ShoppingListItem.toEntity(
+    normalizedName: String,
+    normalizedUnit: String,
+): ShoppingListItemEntity {
+    return ShoppingListItemEntity(
+        id = id,
+        name = name,
+        normalizedName = normalizedName,
+        quantity = quantity,
+        unit = unit,
+        normalizedUnit = normalizedUnit,
+        isChecked = isChecked,
+        sourceRecipeId = sourceRecipeId,
+        sourceRecipeTitle = sourceRecipeTitle,
+        createdAt = createdAt,
+        updatedAt = updatedAt,
     )
 }

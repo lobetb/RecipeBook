@@ -11,5 +11,6 @@ sealed class Screen(val route: String) {
         fun createRoute(recipeId: Long) = "edit_recipe/$recipeId"
     }
     data object ImportRecipe : Screen("import_recipe")
+    data object ShoppingList : Screen("shopping_list")
     data object Settings : Screen("settings")
 }
