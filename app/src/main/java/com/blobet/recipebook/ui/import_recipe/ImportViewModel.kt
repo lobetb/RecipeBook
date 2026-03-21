@@ -21,6 +21,7 @@ import java.net.HttpURLConnection
 import java.net.URLEncoder
 import java.net.URL
 import org.jsoup.Jsoup
+import org.jsoup.nodes.Document
 import com.google.gson.JsonParser
 import javax.inject.Inject
 
@@ -128,8 +129,7 @@ class ImportViewModel @Inject constructor(
                     if (isTikTokUrl(normalizedUrl)) {
                         parseTikTokRecipe(normalizedUrl)
                     } else {
-                        val html = fetchHtml(normalizedUrl)
-                        RecipeParser.parseHtml(html, normalizedUrl)
+                        parseGenericRecipeWithAmpFallback(normalizedUrl)
                     }
                 }
 
@@ -177,6 +177,36 @@ class ImportViewModel @Inject constructor(
                     )
                 }
             }
+        }
+    }
+
+    private fun parseGenericRecipeWithAmpFallback(url: String): RecipeParser.ParseResult {
+        val primaryHtml = fetchHtml(url)
+        val primaryResult = RecipeParser.parseHtml(primaryHtml, url)
+
+        if (!isLowQualityExtraction(primaryResult.recipe)) {
+            return primaryResult
+        }
+
+        val ampUrl = extractAmpUrl(primaryHtml, url)
+        if (ampUrl.isNullOrBlank() || ampUrl == url) {
+            return primaryResult
+        }
+
+        return try {
+            val ampHtml = fetchHtml(ampUrl)
+            val ampResult = RecipeParser.parseHtml(ampHtml, ampUrl)
+            val mergedRecipe = mergeRecipeCandidates(primaryResult.recipe, ampResult.recipe)
+
+            if (mergedRecipe != null) {
+                RecipeParser.ParseResult(recipe = mergedRecipe)
+            } else if (ampResult.recipe != null) {
+                ampResult
+            } else {
+                primaryResult
+            }
+        } catch (_: Exception) {
+            primaryResult
         }
     }
 
@@ -456,6 +486,108 @@ class ImportViewModel @Inject constructor(
             instructions = if (primary.instructions.isNotEmpty()) primary.instructions else fallback.instructions,
             description = if (primary.description.isNotBlank()) primary.description else fallback.description,
         )
+    }
+
+    private fun extractAmpUrl(html: String, baseUrl: String): String? {
+        val doc: Document = Jsoup.parse(html, baseUrl)
+        val ampLink = doc.selectFirst("link[rel=amphtml]") ?: return null
+        val abs = ampLink.absUrl("href").trim()
+        if (abs.isNotBlank()) return abs
+        return ampLink.attr("href").trim().ifBlank { null }
+    }
+
+    private fun isLowQualityExtraction(recipe: Recipe?): Boolean {
+        if (recipe == null) return true
+        val score = extractionQualityScore(recipe)
+        return score < 200
+    }
+
+    private fun extractionQualityScore(recipe: Recipe): Int {
+        val titleScore = when {
+            recipe.title.isBlank() -> 0
+            recipe.title.equals("Untitled Recipe", ignoreCase = true) -> 0
+            recipe.title.equals("TikTok Recipe", ignoreCase = true) -> 0
+            else -> 20
+        }
+        val descriptionScore = if (recipe.description.length >= 40) 10 else 0
+        val ingredientsScore = recipe.ingredients.size * 20
+        val instructionsScore = recipe.instructions.size * 40
+        return titleScore + descriptionScore + ingredientsScore + instructionsScore
+    }
+
+    private fun mergeRecipeCandidates(primary: Recipe?, secondary: Recipe?): Recipe? {
+        if (primary == null) return secondary
+        if (secondary == null) return primary
+
+        val richerIngredients = if (primary.ingredients.size >= secondary.ingredients.size) {
+            primary.ingredients
+        } else {
+            secondary.ingredients
+        }
+
+        val richerInstructions = if (primary.instructions.size >= secondary.instructions.size) {
+            primary.instructions
+        } else {
+            secondary.instructions
+        }
+
+        val merged = primary.copy(
+            title = chooseBestTitle(primary.title, secondary.title),
+            description = choosePreferredText(primary.description, secondary.description),
+            imageUrl = primary.imageUrl ?: secondary.imageUrl,
+            servings = chooseServings(primary.servings, secondary.servings),
+            prepTimeMinutes = primary.prepTimeMinutes ?: secondary.prepTimeMinutes,
+            cookTimeMinutes = primary.cookTimeMinutes ?: secondary.cookTimeMinutes,
+            ingredients = richerIngredients,
+            instructions = richerInstructions,
+        )
+
+        val primaryScore = extractionQualityScore(primary)
+        val secondaryScore = extractionQualityScore(secondary)
+        val mergedScore = extractionQualityScore(merged)
+
+        return when {
+            mergedScore >= primaryScore && mergedScore >= secondaryScore -> merged
+            secondaryScore > primaryScore -> secondary
+            else -> primary
+        }
+    }
+
+    private fun chooseBestTitle(first: String, second: String): String {
+        val firstClean = first.trim()
+        val secondClean = second.trim()
+        val firstGeneric = firstClean.equals("Untitled Recipe", ignoreCase = true) ||
+            firstClean.equals("TikTok Recipe", ignoreCase = true)
+        val secondGeneric = secondClean.equals("Untitled Recipe", ignoreCase = true) ||
+            secondClean.equals("TikTok Recipe", ignoreCase = true)
+
+        return when {
+            firstClean.isBlank() -> secondClean
+            secondClean.isBlank() -> firstClean
+            firstGeneric && !secondGeneric -> secondClean
+            secondGeneric && !firstGeneric -> firstClean
+            secondClean.length > firstClean.length + 6 -> secondClean
+            else -> firstClean
+        }
+    }
+
+    private fun choosePreferredText(first: String, second: String): String {
+        val a = first.trim()
+        val b = second.trim()
+        return when {
+            a.isBlank() -> b
+            b.isBlank() -> a
+            b.length > a.length + 30 -> b
+            else -> a
+        }
+    }
+
+    private fun chooseServings(first: Int, second: Int): Int {
+        return when {
+            first != 4 -> first
+            second != 4 -> second
+            else -> first
+        }
     }
 
     fun saveRecipe(recipe: Recipe) {

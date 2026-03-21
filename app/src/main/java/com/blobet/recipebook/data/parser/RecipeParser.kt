@@ -7,6 +7,7 @@ import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import com.blobet.recipebook.domain.model.Ingredient
 import com.blobet.recipebook.domain.model.Recipe
+import java.text.Normalizer
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
@@ -24,7 +25,7 @@ object RecipeParser {
 
     private val instructionHeadings = listOf(
         "instructions", "directions", "method", "steps", "preparation",
-        "préparation", "preparation", "méthode", "methode", "étapes", "etapes"
+        "préparation", "preparation", "méthode", "methode", "étapes", "etapes", "etape"
     )
 
     private val quantityUnitRegex = Regex(
@@ -34,7 +35,7 @@ object RecipeParser {
 
     private const val heuristicConfidenceThreshold = 0.55f
     private val textStepVerbRegex = Regex(
-        """\b(mix|stir|bake|cook|add|heat|serve|boil|preheat|pour|grill|fry|melt|whisk|combine|blend|chop|slice|cuire|ajouter|melanger|mélanger|chauffer|servir|faire\s+bouillir|prechauffer|préchauffer)\b""",
+        """\b(mix|stir|bake|cook|add|heat|serve|boil|preheat|pour|grill|fry|melt|whisk|combine|blend|chop|slice|cuire|ajouter|ajoutez|melanger|mélanger|mélangez|chauffer|servir|faire\s+bouillir|prechauffer|préchauffer|faites|laissez|couvrez|versez)\b""",
         RegexOption.IGNORE_CASE,
     )
 
@@ -59,11 +60,11 @@ object RecipeParser {
 
             // Try JSON-LD first (most common and reliable)
             val jsonLdRecipe = extractFromJsonLd(doc, sourceUrl)
-            if (jsonLdRecipe != null) return ParseResult(recipe = jsonLdRecipe)
+            if (jsonLdRecipe != null && hasCoreRecipeData(jsonLdRecipe)) return ParseResult(recipe = jsonLdRecipe)
 
             // Fallback: try microdata
             val microdataRecipe = extractFromMicrodata(doc, sourceUrl)
-            if (microdataRecipe != null) return ParseResult(recipe = microdataRecipe)
+            if (microdataRecipe != null && hasCoreRecipeData(microdataRecipe)) return ParseResult(recipe = microdataRecipe)
 
             // Fallback: heuristic extraction for non-standard pages
             val heuristicRecipe = extractByHeuristics(doc, sourceUrl)
@@ -71,7 +72,12 @@ object RecipeParser {
                 return ParseResult(recipe = heuristicRecipe.recipe)
             }
 
-            ParseResult(recipe = null, error = "Could not find recipe data on this page. The site may not use standard recipe markup.")
+            val bestEffort = pickRicherRecipe(jsonLdRecipe, microdataRecipe)
+            if (bestEffort != null) {
+                ParseResult(recipe = bestEffort)
+            } else {
+                ParseResult(recipe = null, error = "Could not find recipe data on this page. The site may not use standard recipe markup.")
+            }
         } catch (e: Exception) {
             ParseResult(recipe = null, error = "Error parsing page: ${e.message}")
         }
@@ -85,7 +91,7 @@ object RecipeParser {
             .replace(";", "\n")
             .replace(Regex("""\s*[•●▪◦·]\s*"""), "\n- ")
             .replace(Regex("""(?<!\n)\s+(?=\d+[.)]\s+)"""), "\n")
-            .replace(Regex("""(?<!\n)\s+-\s+(?=[A-Za-z0-9])"""), "\n- ")
+            .replace(Regex("""(?<!\n)(?<!\d)\s+-\s+(?=[A-Za-z0-9])"""), "\n- ")
             .replace(Regex("#[\\p{L}0-9_]+"), "")
             .trim()
 
@@ -108,10 +114,17 @@ object RecipeParser {
         val title = lines.firstOrNull { line ->
             !isHeadingLine(line) && !isLikelyNoiseLine(line)
         }?.take(80) ?: "TikTok Recipe"
+
+        val sectionParsed = extractTextSections(lines)
         val ingredients = mutableListOf<Ingredient>()
         val instructions = mutableListOf<String>()
 
-        lines.forEachIndexed { index, line ->
+        sectionParsed.ingredients.forEach { line ->
+            ingredients.add(IngredientParser.parse(line, ingredients.size))
+        }
+        instructions.addAll(sectionParsed.instructions)
+
+        lines.forEach { line ->
             when {
                 looksLikeIngredientLine(line) -> ingredients.add(IngredientParser.parse(line, ingredients.size))
                 looksLikeInstructionLine(line) -> instructions.add(cleanHtml(line))
@@ -168,14 +181,21 @@ object RecipeParser {
             }
         }
 
+        val dedupedIngredients = ingredients
+            .distinctBy { normalizeForMatch(it.displayText()) }
+        val dedupedInstructions = instructions
+            .map { cleanHtml(it).trim() }
+            .filter { it.isNotBlank() }
+            .distinct()
+
         return ParseResult(
             recipe = Recipe(
                 title = title,
                 description = lines.take(3).joinToString(" ").take(240),
                 sourceUrl = sourceUrl,
                 servings = 4,
-                ingredients = ingredients,
-                instructions = instructions,
+                ingredients = dedupedIngredients,
+                instructions = dedupedInstructions,
             )
         )
     }
@@ -189,27 +209,33 @@ object RecipeParser {
     }
 
     private fun looksLikeInstructionLine(line: String): Boolean {
-        val lower = line.lowercase()
+        val lower = normalizeForMatch(line)
         if (lower.startsWith("instructions") || lower.startsWith("directions") || lower.startsWith("method")) {
             return false
         }
         if (line.length < 8 || line.length > 800) return false
-        val hasStepPrefix = Regex("""^(step\s*\d+|\d+[.)])""", RegexOption.IGNORE_CASE).containsMatchIn(line)
+        val hasStepPrefix = Regex(
+            """^(step\s*\d+|etape\s*\d+|étape\s*\d+|\d+\s*[-).])""",
+            RegexOption.IGNORE_CASE,
+        ).containsMatchIn(line)
         return hasStepPrefix || textStepVerbRegex.containsMatchIn(line)
     }
 
     private fun isHeadingLine(line: String): Boolean {
-        val lower = line.lowercase()
+        val lower = normalizeForMatch(line)
         return lower.startsWith("ingredients") ||
             lower.startsWith("instructions") ||
             lower.startsWith("directions") ||
-            lower.startsWith("method")
+            lower.startsWith("method") ||
+            lower.startsWith("preparation") ||
+            lower.startsWith("etapes") ||
+            lower.startsWith("etape")
     }
 
     private fun splitCompoundListLine(line: String): List<String> {
         val normalizedLine = line.trim()
 
-        val numberedMatches = Regex("""\d+[.)]\s+[^\d].{2,220}(?=(\s+\d+[.)]\s+)|$)""")
+        val numberedMatches = Regex("""\d+\s*[-).]\s+[^\d].{2,220}(?=(\s+\d+\s*[-).]\s+)|$)""")
             .findAll(normalizedLine)
             .map { it.value.trim() }
             .toList()
@@ -517,16 +543,16 @@ object RecipeParser {
     private fun hasAnyHeading(root: Element, candidates: List<String>): Boolean {
         return root.select("h1, h2, h3, h4, h5, h6, strong")
             .any { heading ->
-                val text = heading.text().trim().lowercase()
-                candidates.any { candidate -> text.contains(candidate) }
+                val text = normalizeForMatch(heading.text().trim())
+                candidates.any { candidate -> text.contains(normalizeForMatch(candidate)) }
             }
     }
 
     private fun extractSectionLines(root: Element, headings: List<String>): List<String> {
         val heading = root.select("h1, h2, h3, h4, h5, h6, strong")
             .firstOrNull {
-                val headingText = it.text().trim().lowercase()
-                headings.any { candidate -> headingText.contains(candidate) }
+                val headingText = normalizeForMatch(it.text().trim())
+                headings.any { candidate -> headingText.contains(normalizeForMatch(candidate)) }
             } ?: return emptyList()
 
         val lines = mutableListOf<String>()
@@ -535,6 +561,19 @@ object RecipeParser {
 
         while (cursor != null && hop < 8) {
             if (cursor.tagName() in setOf("h1", "h2", "h3", "h4", "h5", "h6")) break
+
+            val strongTitle = cursor.selectFirst("strong")?.text().orEmpty()
+            val strongTitleNormalized = normalizeForMatch(strongTitle)
+            if (instructionHeadings.any { strongTitleNormalized.contains(normalizeForMatch(it)) } &&
+                headings != instructionHeadings
+            ) {
+                break
+            }
+            if (ingredientHeadings.any { strongTitleNormalized.contains(normalizeForMatch(it)) } &&
+                headings != ingredientHeadings
+            ) {
+                break
+            }
 
             when (cursor.tagName()) {
                 "ul", "ol" -> {
@@ -545,7 +584,9 @@ object RecipeParser {
                 }
                 "p" -> {
                     val text = cleanHtml(cursor.text())
-                    if (text.isNotBlank()) lines.add(text)
+                    if (text.isNotBlank()) {
+                        lines.addAll(splitCompoundListLine(text))
+                    }
                 }
                 else -> {
                     cursor.select("li").forEach { li ->
@@ -580,6 +621,14 @@ object RecipeParser {
             .filter { it.length > 8 }
         if (headingBased.size >= 2) return headingBased.take(40)
 
+        val stepParagraphs = root.select("p")
+            .map { cleanHtml(it.text()) }
+            .flatMap { splitInstructionChunk(it) }
+            .map { it.trim() }
+            .filter { Regex("""^(étape|etape|step)\s*\d+|^\d+\s*[-).]""", RegexOption.IGNORE_CASE).containsMatchIn(it) }
+            .filter { looksLikeInstruction(it) }
+        if (stepParagraphs.size >= 2) return stepParagraphs.take(40)
+
         val orderedList = root.select("ol li")
             .map { cleanHtml(it.text()) }
             .filter { text -> looksLikeInstruction(text) }
@@ -605,12 +654,22 @@ object RecipeParser {
     }
 
     private fun splitInstructionChunk(text: String): List<String> {
+        val numberedBlocks = Regex(
+            """(?:^|\s)(\d+\s*[-).]\s+.{12,900}?)(?=(?:\s\d+\s*[-).]\s+)|$)""",
+            setOf(RegexOption.DOT_MATCHES_ALL),
+        )
+            .findAll(text)
+            .map { it.groupValues[1].replace(Regex("\\s+"), " ").trim() }
+            .filter { it.length in 12..900 }
+            .toList()
+        if (numberedBlocks.size >= 2) return numberedBlocks
+
         if (text.contains("\n")) {
             return text.split(Regex("\n+"))
                 .map { it.trim() }
                 .filter { it.isNotBlank() }
         }
-        return text.split(Regex("(?<=\\.)\\s+(?=[A-Z0-9])"))
+        return text.split(Regex("(?<=\\.|!)\\s+(?=[A-ZÀ-ÖØ-Þ0-9])"))
             .map { it.trim() }
             .filter { it.isNotBlank() }
     }
@@ -629,8 +688,68 @@ object RecipeParser {
             "mélanger", "melanger", "cuire", "ajouter", "chauffer", "servir", "faire bouillir",
             "préchauffer", "prechauffer", "verser", "couvrir", "égoutter", "egoutter", "laisser"
         ).any { cue -> lower.contains(cue) }
-        val hasStepPrefix = Regex("""^(step\s*\d+|\d+[.)])""", RegexOption.IGNORE_CASE).containsMatchIn(text)
+        val hasStepPrefix = Regex(
+            """^(step\s*\d+|etape\s*\d+|étape\s*\d+|\d+\s*[-).])""",
+            RegexOption.IGNORE_CASE,
+        ).containsMatchIn(text)
         return hasVerbCue || hasStepPrefix
+    }
+
+    private data class TextSectionParse(
+        val ingredients: List<String>,
+        val instructions: List<String>,
+    )
+
+    private fun extractTextSections(lines: List<String>): TextSectionParse {
+        val ingredients = mutableListOf<String>()
+        val instructions = mutableListOf<String>()
+
+        var mode: String? = null
+        lines.forEach { raw ->
+            val line = raw.trim()
+            val normalized = normalizeForMatch(line).trim(':')
+            val isIngredientHeading = ingredientHeadings.any { normalized.contains(normalizeForMatch(it)) }
+            val isInstructionHeading = instructionHeadings.any { normalized.contains(normalizeForMatch(it)) }
+
+            when {
+                isIngredientHeading -> {
+                    mode = "ingredients"
+                    return@forEach
+                }
+                isInstructionHeading -> {
+                    mode = "instructions"
+                    return@forEach
+                }
+                isHeadingLine(line) -> {
+                    mode = null
+                    return@forEach
+                }
+            }
+
+            when (mode) {
+                "ingredients" -> {
+                    splitCompoundListLine(line)
+                        .filter { looksLikeIngredientLine(it) || quantityUnitRegex.containsMatchIn(it) }
+                        .forEach { ingredients.add(it) }
+                }
+                "instructions" -> {
+                    splitInstructionChunk(line)
+                        .filter { looksLikeInstructionLine(it) || looksLikeInstruction(it) }
+                        .forEach { instructions.add(it) }
+                }
+            }
+        }
+
+        return TextSectionParse(
+            ingredients = ingredients.distinct(),
+            instructions = instructions.distinct(),
+        )
+    }
+
+    private fun normalizeForMatch(input: String): String {
+        val noDiacritics = Normalizer.normalize(input, Normalizer.Form.NFD)
+            .replace(Regex("\\p{Mn}+"), "")
+        return noDiacritics.lowercase()
     }
 
     private fun computeHeuristicConfidence(
@@ -645,6 +764,18 @@ object RecipeParser {
         if (hasIngredientHeading) score += 0.15f
         if (hasInstructionHeading) score += 0.15f
         return score.coerceIn(0f, 1f)
+    }
+
+    private fun hasCoreRecipeData(recipe: Recipe): Boolean {
+        return recipe.ingredients.size >= 2 && recipe.instructions.size >= 2
+    }
+
+    private fun pickRicherRecipe(first: Recipe?, second: Recipe?): Recipe? {
+        fun score(recipe: Recipe?): Int {
+            if (recipe == null) return -1
+            return recipe.instructions.size * 100 + recipe.ingredients.size * 10
+        }
+        return if (score(first) >= score(second)) first else second
     }
 
     private fun extractServingsFromText(text: String): Int? {
