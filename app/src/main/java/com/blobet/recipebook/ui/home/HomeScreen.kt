@@ -1,5 +1,6 @@
 package com.blobet.recipebook.ui.home
 
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
@@ -30,6 +31,7 @@ import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.DropdownMenu
@@ -42,6 +44,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Divider
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -58,10 +61,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.blobet.recipebook.R
 import com.blobet.recipebook.ui.components.RecipeCard
 import com.blobet.recipebook.ui.components.SearchBar
+import com.blobet.recipebook.util.BugReportUtils
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -74,11 +79,11 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     var showFilters by remember { mutableStateOf(false) }
     var fabExpanded by remember { mutableStateOf(false) }
-    var showSortMenu by remember { mutableStateOf(false) }
-    var showLayoutMenu by remember { mutableStateOf(false) }
+    var showActionsMenu by remember { mutableStateOf(false) }
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -100,61 +105,92 @@ fun HomeScreen(
                             contentDescription = stringResource(R.string.home_filter_recipes),
                         )
                     }
-                    Box {
-                        IconButton(onClick = { showSortMenu = true }) {
-                            Icon(
-                                imageVector = Icons.Default.ArrowDownward,
-                                contentDescription = stringResource(R.string.home_sort_recipes),
-                            )
-                        }
-                        DropdownMenu(
-                            expanded = showSortMenu,
-                            onDismissRequest = { showSortMenu = false },
-                        ) {
-                            SortMode.entries.forEach { mode ->
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(mode.labelRes)) },
-                                    onClick = {
-                                        viewModel.onSortModeChange(mode)
-                                        showSortMenu = false
-                                    },
-                                )
-                            }
-                        }
-                    }
-                    Box {
-                        IconButton(onClick = { showLayoutMenu = true }) {
-                            LayoutIndicatorIcon(
-                                layoutMode = uiState.layoutMode,
-                                modifier = Modifier.size(20.dp),
-                            )
-                        }
-                        DropdownMenu(
-                            expanded = showLayoutMenu,
-                            onDismissRequest = { showLayoutMenu = false },
-                        ) {
-                            LayoutMode.entries.forEach { mode ->
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(mode.labelRes)) },
-                                    onClick = {
-                                        viewModel.onLayoutModeChange(mode)
-                                        showLayoutMenu = false
-                                    },
-                                )
-                            }
-                        }
-                    }
                     IconButton(onClick = onShoppingListClick) {
                         Icon(
                             imageVector = Icons.Default.ShoppingCart,
                             contentDescription = stringResource(R.string.home_shopping_list),
                         )
                     }
-                    IconButton(onClick = onSettingsClick) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = stringResource(R.string.home_settings),
-                        )
+                    Box {
+                        IconButton(onClick = { showActionsMenu = true }) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = stringResource(R.string.more_actions),
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = showActionsMenu,
+                            onDismissRequest = { showActionsMenu = false },
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.home_sort_recipes)) },
+                                onClick = {},
+                                enabled = false,
+                            )
+                            SortMode.entries.forEach { mode ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            if (uiState.sortMode == mode) {
+                                                "${stringResource(mode.labelRes)} \u2713"
+                                            } else {
+                                                stringResource(mode.labelRes)
+                                            }
+                                        )
+                                    },
+                                    onClick = {
+                                        viewModel.onSortModeChange(mode)
+                                        showActionsMenu = false
+                                    },
+                                )
+                            }
+
+                            Divider()
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.home_layout_options)) },
+                                onClick = {},
+                                enabled = false,
+                            )
+                            LayoutMode.entries.forEach { mode ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            if (uiState.layoutMode == mode) {
+                                                "${stringResource(mode.labelRes)} \u2713"
+                                            } else {
+                                                stringResource(mode.labelRes)
+                                            }
+                                        )
+                                    },
+                                    onClick = {
+                                        viewModel.onLayoutModeChange(mode)
+                                        showActionsMenu = false
+                                    },
+                                )
+                            }
+
+                            Divider()
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.home_settings)) },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Settings, contentDescription = null)
+                                },
+                                onClick = {
+                                    showActionsMenu = false
+                                    onSettingsClick()
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.report_bug)) },
+                                onClick = {
+                                    showActionsMenu = false
+                                    val opened = BugReportUtils.openBugReportEmail(context)
+                                    if (!opened) {
+                                        Toast.makeText(context, context.getString(R.string.report_bug_no_email_app), Toast.LENGTH_SHORT).show()
+                                    }
+                                },
+                            )
+                        }
                     }
                 },
             )
@@ -176,7 +212,8 @@ fun HomeScreen(
                             },
                             icon = { Icon(Icons.Default.Link, contentDescription = null) },
                             text = { Text(stringResource(R.string.home_import_from_url)) },
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary,
                         )
                         ExtendedFloatingActionButton(
                             onClick = {

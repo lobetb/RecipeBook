@@ -20,6 +20,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
@@ -36,6 +38,8 @@ import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -80,6 +84,7 @@ fun DetailScreen(
     var showShareDialog by remember { mutableStateOf(false) }
     var showNewTagDialog by remember { mutableStateOf(false) }
     var newTagName by remember { mutableStateOf("") }
+    var showActionsMenu by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiState.isDeleted) {
         if (uiState.isDeleted) {
@@ -106,18 +111,39 @@ fun DetailScreen(
                                 tint = if (recipe.isFavorite) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
                             )
                         }
-                        IconButton(onClick = { showShareDialog = true }) {
-                            Icon(Icons.Default.Share, contentDescription = stringResource(R.string.share))
-                        }
-                        IconButton(onClick = { onEditClick(recipe.id) }) {
-                            Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.edit))
-                        }
-                        IconButton(onClick = { showDeleteDialog = true }) {
-                            Icon(
-                                Icons.Default.Delete,
-                                contentDescription = stringResource(R.string.delete),
-                                tint = MaterialTheme.colorScheme.error,
-                            )
+                        Box {
+                            IconButton(onClick = { showActionsMenu = true }) {
+                                Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.more_actions))
+                            }
+                            DropdownMenu(
+                                expanded = showActionsMenu,
+                                onDismissRequest = { showActionsMenu = false },
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.share_recipe)) },
+                                    leadingIcon = { Icon(Icons.Default.Share, contentDescription = null) },
+                                    onClick = {
+                                        showActionsMenu = false
+                                        showShareDialog = true
+                                    },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.edit_recipe_title)) },
+                                    leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
+                                    onClick = {
+                                        showActionsMenu = false
+                                        onEditClick(recipe.id)
+                                    },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.delete)) },
+                                    leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                                    onClick = {
+                                        showActionsMenu = false
+                                        showDeleteDialog = true
+                                    },
+                                )
+                            }
                         }
                     }
                 },
@@ -282,7 +308,7 @@ fun DetailScreen(
                     OutlinedButton(
                         onClick = { showNewTagDialog = true },
                     ) {
-                        Icon(Icons.Default.Edit, contentDescription = null)
+                        Icon(Icons.Default.Add, contentDescription = null)
                         Spacer(modifier = Modifier.size(8.dp))
                         Text(stringResource(R.string.new_tag))
                     }

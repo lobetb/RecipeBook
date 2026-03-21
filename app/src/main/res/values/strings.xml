@@ -6,6 +6,7 @@
     <string name="home_filter_recipes">Filter recipes</string>
     <string name="home_sort_recipes">Sort recipes</string>
     <string name="home_layout_options">Layout options</string>
+    <string name="more_actions">More actions</string>
     <string name="home_settings">Settings</string>
     <string name="home_shopping_list">Shopping list</string>
     <string name="home_import_from_url">Import from URL</string>
@@ -116,6 +117,10 @@
     <string name="settings_french">French</string>
     <string name="settings_backup">Backup</string>
     <string name="settings_backup_description">Create a ZIP backup of your local database (including WAL data) and save it to Google Drive (or any document provider).</string>
+    <string name="report_bug">Report a bug</string>
+    <string name="report_bug_subject">Recipe Book bug report</string>
+    <string name="report_bug_body_template">Please describe the issue:\n\nSteps to reproduce:\n1.\n2.\n\nExpected result:\n\nActual result:\n\n---\nApp version: %1$s (%2$d)\nAndroid: %3$s\nDevice: %4$s %5$s\nLanguage: %6$s\n</string>
+    <string name="report_bug_no_email_app">No email app found on this device.</string>
     <string name="settings_backup_to_drive">Backup database to Drive</string>
     <string name="settings_restore_from_drive">Restore database from Drive</string>
     <string name="backup_in_progress">Backup in progress...</string>

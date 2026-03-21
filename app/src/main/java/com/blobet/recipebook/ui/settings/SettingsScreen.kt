@@ -51,7 +51,9 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
-    val currentTag = AppCompatDelegate.getApplicationLocales()[0]?.language ?: LANGUAGE_EN
+    val currentTag = AppCompatDelegate.getApplicationLocales()[0]?.language
+        ?: context.resources.configuration.locales[0]?.language
+        ?: LANGUAGE_EN
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 

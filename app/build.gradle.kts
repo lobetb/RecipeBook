@@ -22,8 +22,8 @@ android {
         applicationId = "com.blobet.recipebook"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "1.2"
+        versionCode = 4
+        versionName = "1.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -82,6 +82,65 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+}
+
+val checkFrenchStringsQuality by tasks.registering {
+    group = "verification"
+    description = "Prevents degraded French localization text (accents/apostrophes)."
+
+    doLast {
+        val file = project.file("src/main/res/values-fr/strings.xml")
+        if (!file.exists()) return@doLast
+
+        val content = file.readText(Charsets.UTF_8)
+        val contentWithoutPlaceholders = content
+            .replace(Regex("%\\d+\\$[a-zA-Z]"), "")
+            .replace(Regex("%[a-zA-Z]"), "")
+
+        val suspiciousPlainForms = linkedMapOf(
+            "premiere" to "première",
+            "diner" to "dîner",
+            "etapes" to "étapes",
+            "imperial" to "impérial",
+            "probleme" to "problème",
+            "decrire" to "décrire",
+            "echec" to "échec",
+        )
+
+        val badWords = mutableListOf<String>()
+        suspiciousPlainForms.forEach { (plain, _) ->
+            val regex = Regex("""\b${Regex.escape(plain)}\b""", RegexOption.IGNORE_CASE)
+            if (regex.containsMatchIn(contentWithoutPlaceholders)) {
+                badWords.add(plain)
+            }
+        }
+
+        val missingApostrophes = Regex(
+            """\b([ldjtmcsnLDJTMCSN])\s+([aeiouhàâäéèêëîïôöùûühAEIOUHÀÂÄÉÈÊËÎÏÔÖÙÛÜH])"""
+        )
+            .findAll(contentWithoutPlaceholders)
+            .map { it.value.trim() }
+            .filterNot { it.startsWith("%") }
+            .toList()
+
+        if (badWords.isNotEmpty() || missingApostrophes.isNotEmpty()) {
+            val message = buildString {
+                appendLine("French localization quality check failed in ${file.path}")
+                if (badWords.isNotEmpty()) {
+                    appendLine("- Suspicious unaccented words found: ${badWords.distinct().joinToString(", ")}")
+                }
+                if (missingApostrophes.isNotEmpty()) {
+                    appendLine("- Suspicious missing apostrophes found: ${missingApostrophes.take(8).joinToString(", ")}")
+                }
+                appendLine("Please keep accents and French apostrophes in values-fr/strings.xml.")
+            }
+            throw GradleException(message)
+        }
+    }
+}
+
+tasks.named("preBuild") {
+    dependsOn(checkFrenchStringsQuality)
 }
 
 dependencies {
