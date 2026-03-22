@@ -7,6 +7,8 @@
     <string name="home_sort_recipes">Trier les recettes</string>
     <string name="home_layout_options">Options de vue</string>
     <string name="more_actions">Plus d\'actions</string>
+    <string name="keep_screen_on_enable">Activer garder l\'écran allumé</string>
+    <string name="keep_screen_on_disable">Désactiver garder l\'écran allumé</string>
     <string name="home_settings">Paramètres</string>
     <string name="home_shopping_list">Liste de courses</string>
     <string name="home_import_from_url">Importer depuis une URL</string>

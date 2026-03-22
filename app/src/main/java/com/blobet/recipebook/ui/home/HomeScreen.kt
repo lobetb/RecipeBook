@@ -4,6 +4,7 @@ import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,6 +35,8 @@ import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.ScreenLockPortrait
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -76,6 +79,8 @@ fun HomeScreen(
     onImportRecipeClick: () -> Unit,
     onShoppingListClick: () -> Unit,
     onSettingsClick: () -> Unit,
+    isKeepScreenOn: Boolean,
+    onToggleKeepScreenOn: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -109,6 +114,23 @@ fun HomeScreen(
                         Icon(
                             imageVector = Icons.Default.ShoppingCart,
                             contentDescription = stringResource(R.string.home_shopping_list),
+                        )
+                    }
+                    val keepScreenModifier = Modifier
+                        .size(40.dp)
+                        .background(
+                            color = if (isKeepScreenOn) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.Transparent,
+                            shape = CircleShape,
+                        )
+                    IconButton(onClick = onToggleKeepScreenOn, modifier = keepScreenModifier) {
+                        Icon(
+                            imageVector = Icons.Default.ScreenLockPortrait,
+                            contentDescription = if (isKeepScreenOn) {
+                                stringResource(R.string.keep_screen_on_disable)
+                            } else {
+                                stringResource(R.string.keep_screen_on_enable)
+                            },
+                            tint = if (isKeepScreenOn) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                     Box {

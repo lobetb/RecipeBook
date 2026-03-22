@@ -2,8 +2,12 @@ package com.blobet.recipebook.ui.components
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -86,11 +90,20 @@ private fun IngredientRow(
 
         if (onAdd != null) {
             androidx.compose.foundation.layout.Spacer(modifier = Modifier.weight(1f))
-            IconButton(onClick = onAdd, enabled = !isAdded) {
+            val buttonModifier = Modifier
+                .size(40.dp)
+                .background(
+                    color = if (isAdded) MaterialTheme.colorScheme.primary else Color.Transparent,
+                    shape = CircleShape,
+                )
+            IconButton(
+                onClick = onAdd,
+                modifier = buttonModifier,
+            ) {
                 Icon(
                     imageVector = Icons.Default.AddShoppingCart,
                     contentDescription = stringResource(R.string.add_to_shopping_list),
-                    tint = if (isAdded) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = if (isAdded) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }

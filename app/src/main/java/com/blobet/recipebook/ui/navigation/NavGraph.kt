@@ -1,13 +1,17 @@
 package com.blobet.recipebook.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.State
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.platform.LocalView
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -27,6 +31,18 @@ fun NavGraph(
     sharedRecipePayloadJson: String? = null,
 ) {
     val navController = rememberNavController()
+    var keepScreenOn by rememberSaveable { mutableStateOf(false) }
+    val rootView = LocalView.current
+
+    SideEffect {
+        rootView.keepScreenOn = keepScreenOn
+    }
+    DisposableEffect(rootView) {
+        onDispose {
+            rootView.keepScreenOn = false
+        }
+    }
+
     val hasSharedImport = !sharedText.isNullOrBlank() || !sharedRecipePayloadJson.isNullOrBlank()
     val startDestination = if (hasSharedImport) Screen.ImportRecipe.route else Screen.Splash.route
     var pendingSharedText by remember { mutableStateOf<String?>(sharedText) }
@@ -85,7 +101,9 @@ fun NavGraph(
                 },
                 onSettingsClick = {
                     navController.navigate(Screen.Settings.route)
-                }
+                },
+                isKeepScreenOn = keepScreenOn,
+                onToggleKeepScreenOn = { keepScreenOn = !keepScreenOn },
             )
         }
 
@@ -106,7 +124,9 @@ fun NavGraph(
                 },
                 onEditClick = { recipeId ->
                     navController.navigate(Screen.EditRecipe.createRoute(recipeId))
-                }
+                },
+                isKeepScreenOn = keepScreenOn,
+                onToggleKeepScreenOn = { keepScreenOn = !keepScreenOn },
             )
         }
 

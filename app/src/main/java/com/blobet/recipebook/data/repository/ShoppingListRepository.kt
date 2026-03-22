@@ -96,6 +96,13 @@ class ShoppingListRepository @Inject constructor(
         shoppingListDao.deleteById(itemId)
     }
 
+    suspend fun deleteByNameAndUnit(name: String, unit: String?) {
+        val normalizedName = normalize(name)
+        if (normalizedName.isBlank()) return
+        val normalizedUnit = normalize(unit)
+        shoppingListDao.deleteByNormalizedNameAndUnit(normalizedName, normalizedUnit)
+    }
+
     suspend fun clearAll() {
         shoppingListDao.clearAll()
     }

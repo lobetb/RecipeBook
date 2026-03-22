@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -30,6 +32,7 @@ import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.RestaurantMenu
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.ScreenLockPortrait
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
@@ -76,6 +79,8 @@ import com.blobet.recipebook.util.ShareUtils
 fun DetailScreen(
     onNavigateBack: () -> Unit,
     onEditClick: (Long) -> Unit,
+    isKeepScreenOn: Boolean,
+    onToggleKeepScreenOn: () -> Unit,
     viewModel: DetailViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -109,6 +114,23 @@ fun DetailScreen(
                                 imageVector = if (recipe.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                                 contentDescription = stringResource(R.string.detail_toggle_favorite),
                                 tint = if (recipe.isFavorite) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+                            )
+                        }
+                        val keepScreenModifier = Modifier
+                            .size(40.dp)
+                            .background(
+                                color = if (isKeepScreenOn) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.Transparent,
+                                shape = CircleShape,
+                            )
+                        IconButton(onClick = onToggleKeepScreenOn, modifier = keepScreenModifier) {
+                            Icon(
+                                imageVector = Icons.Default.ScreenLockPortrait,
+                                contentDescription = if (isKeepScreenOn) {
+                                    stringResource(R.string.keep_screen_on_disable)
+                                } else {
+                                    stringResource(R.string.keep_screen_on_enable)
+                                },
+                                tint = if (isKeepScreenOn) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                         Box {

@@ -20,6 +20,12 @@ interface ShoppingListDao {
         normalizedUnit: String,
     ): ShoppingListItemEntity?
 
+    @Query("DELETE FROM shopping_list_items WHERE normalizedName = :normalizedName AND normalizedUnit = :normalizedUnit")
+    suspend fun deleteByNormalizedNameAndUnit(
+        normalizedName: String,
+        normalizedUnit: String,
+    )
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(item: ShoppingListItemEntity): Long
 

@@ -153,6 +153,19 @@ class DetailViewModel @Inject constructor(
         val ingredientToSave = IngredientConversion.convertIngredient(ingredient, selectedSystem)
         val key = ingredientKey(ingredient)
 
+        if (key in _uiState.value.addedIngredientKeys) {
+            viewModelScope.launch {
+                shoppingListRepository.deleteByNameAndUnit(
+                    name = ingredientToSave.name,
+                    unit = ingredientToSave.unit,
+                )
+                _uiState.update { state ->
+                    state.copy(addedIngredientKeys = state.addedIngredientKeys - key)
+                }
+            }
+            return
+        }
+
         viewModelScope.launch {
             shoppingListRepository.addItem(
                 name = ingredientToSave.name,
