@@ -60,21 +60,21 @@ object RecipeParser {
 
             // Try JSON-LD first (most common and reliable)
             val jsonLdRecipe = extractFromJsonLd(doc, sourceUrl)
-            if (jsonLdRecipe != null && hasCoreRecipeData(jsonLdRecipe)) return ParseResult(recipe = jsonLdRecipe)
 
             // Fallback: try microdata
             val microdataRecipe = extractFromMicrodata(doc, sourceUrl)
-            if (microdataRecipe != null && hasCoreRecipeData(microdataRecipe)) return ParseResult(recipe = microdataRecipe)
 
             // Fallback: heuristic extraction for non-standard pages
             val heuristicRecipe = extractByHeuristics(doc, sourceUrl)
-            if (heuristicRecipe != null && heuristicRecipe.confidence >= heuristicConfidenceThreshold) {
-                return ParseResult(recipe = heuristicRecipe.recipe)
-            }
+            val heuristicCandidate = heuristicRecipe
+                ?.takeIf { it.confidence >= heuristicConfidenceThreshold || hasCoreRecipeData(it.recipe) }
+                ?.recipe
 
-            val bestEffort = pickRicherRecipe(jsonLdRecipe, microdataRecipe)
-            if (bestEffort != null) {
-                ParseResult(recipe = bestEffort)
+            val mergedStructured = mergeRecipeCandidates(jsonLdRecipe, microdataRecipe)
+            val mergedAll = mergeRecipeCandidates(mergedStructured, heuristicCandidate)
+
+            if (mergedAll != null) {
+                ParseResult(recipe = mergedAll)
             } else {
                 ParseResult(recipe = null, error = "Could not find recipe data on this page. The site may not use standard recipe markup.")
             }
@@ -327,18 +327,32 @@ object RecipeParser {
 
     private fun extractImageUrl(json: JsonObject): String? {
         val image = json.get("image") ?: return null
+        return extractUrlFromJsonElement(image)
+    }
+
+    private fun extractUrlFromJsonElement(element: JsonElement?): String? {
+        if (element == null || element.isJsonNull) return null
+
         return when {
-            image.isJsonPrimitive -> image.asString
-            image.isJsonArray -> {
-                val arr = image.asJsonArray
-                if (arr.size() > 0) {
-                    val first = arr[0]
-                    if (first.isJsonPrimitive) first.asString
-                    else if (first.isJsonObject) first.asJsonObject.getStringOrNull("url")
-                    else null
-                } else null
+            element.isJsonPrimitive -> {
+                element.asString.trim().ifBlank { null }
             }
-            image.isJsonObject -> image.asJsonObject.getStringOrNull("url")
+            element.isJsonArray -> {
+                element.asJsonArray.asSequence()
+                    .mapNotNull { child -> extractUrlFromJsonElement(child) }
+                    .firstOrNull()
+            }
+            element.isJsonObject -> {
+                val obj = element.asJsonObject
+
+                extractUrlFromJsonElement(obj.get("url"))
+                    ?: extractUrlFromJsonElement(obj.get("contentUrl"))
+                    ?: extractUrlFromJsonElement(obj.get("@id"))
+                    ?: obj.entrySet()
+                        .asSequence()
+                        .mapNotNull { (_, value) -> extractUrlFromJsonElement(value) }
+                        .firstOrNull()
+            }
             else -> null
         }
     }
@@ -519,6 +533,7 @@ object RecipeParser {
                 title = title,
                 description = description,
                 sourceUrl = sourceUrl,
+                imageUrl = extractBestImageUrl(doc, root),
                 servings = servings,
                 prepTimeMinutes = prepTime,
                 cookTimeMinutes = cookTime,
@@ -558,9 +573,21 @@ object RecipeParser {
         val lines = mutableListOf<String>()
         var cursor = heading.nextElementSibling()
         var hop = 0
+        val allSectionHeadings = ingredientHeadings + instructionHeadings
 
-        while (cursor != null && hop < 8) {
+        while (cursor != null && hop < 40) {
             if (cursor.tagName() in setOf("h1", "h2", "h3", "h4", "h5", "h6")) break
+
+            val cursorText = normalizeForMatch(cursor.text().trim())
+            val looksLikeNewSectionHeader =
+                cursor.tagName() in setOf("strong", "p", "div") &&
+                    allSectionHeadings.any { candidate ->
+                        cursorText.startsWith(normalizeForMatch(candidate))
+                    } &&
+                    headings.none { candidate ->
+                        cursorText.startsWith(normalizeForMatch(candidate))
+                    }
+            if (looksLikeNewSectionHeader) break
 
             val strongTitle = cursor.selectFirst("strong")?.text().orEmpty()
             val strongTitleNormalized = normalizeForMatch(strongTitle)
@@ -604,6 +631,39 @@ object RecipeParser {
         return lines
     }
 
+    private fun extractBestImageUrl(doc: Document, root: Element): String? {
+        val metaCandidates = listOfNotNull(
+            doc.selectFirst("meta[property=og:image]")?.attr("content")?.trim(),
+            doc.selectFirst("meta[name=twitter:image]")?.attr("content")?.trim(),
+        )
+
+        val contentCandidates = root.select("img[src], img[data-src], img[data-original]")
+            .mapNotNull { img ->
+                val raw = listOf(
+                    img.attr("src").trim(),
+                    img.attr("data-src").trim(),
+                    img.attr("data-original").trim(),
+                ).firstOrNull { it.isNotBlank() } ?: return@mapNotNull null
+                val absolute = when {
+                    raw.startsWith("http", ignoreCase = true) -> raw
+                    raw.startsWith("//") -> "https:$raw"
+                    else -> img.absUrl("src").ifBlank { raw }
+                }.trim()
+                if (absolute.isBlank()) return@mapNotNull null
+
+                val lower = absolute.lowercase()
+                if (lower.contains("logo") || lower.contains("icon")) return@mapNotNull null
+
+                absolute
+            }
+
+        return (metaCandidates + contentCandidates)
+            .firstOrNull { candidate ->
+                candidate.startsWith("http", ignoreCase = true) &&
+                    !candidate.contains("svg", ignoreCase = true)
+            }
+    }
+
     private fun guessIngredientsWithoutHeading(root: Element): List<String> {
         val candidateLines = root.select("li")
             .map { cleanHtml(it.text()) }
@@ -615,6 +675,9 @@ object RecipeParser {
     }
 
     private fun extractInstructionLines(root: Element): List<String> {
+        val orderedStepsAfterHeading = extractOrderedStepsAfterInstructionHeading(root)
+        if (orderedStepsAfterHeading.size >= 2) return orderedStepsAfterHeading.take(40)
+
         val headingBased = extractSectionLines(root, instructionHeadings)
             .flatMap { chunk -> splitInstructionChunk(chunk) }
             .map { cleanHtml(it) }
@@ -653,7 +716,104 @@ object RecipeParser {
             .take(20)
     }
 
+    private fun extractOrderedStepsAfterInstructionHeading(root: Element): List<String> {
+        val headingCandidates = root.select("h1, h2, h3, h4, h5, h6, strong")
+            .filter { heading ->
+                val headingText = normalizeForMatch(heading.text().trim())
+                instructionHeadings.any { candidate ->
+                    headingText.contains(normalizeForMatch(candidate))
+                }
+            }
+            .sortedBy { heading ->
+                when (heading.tagName()) {
+                    "h2" -> 0
+                    "h3" -> 1
+                    "h1" -> 2
+                    "h4", "h5", "h6" -> 3
+                    "strong" -> 4
+                    else -> 5
+                }
+            }
+
+        var best: List<String> = emptyList()
+        headingCandidates.forEach { heading ->
+            var cursor = heading.nextElementSibling()
+            var hop = 0
+            while (cursor != null && hop < 16) {
+                if (cursor.tagName() in setOf("h1", "h2", "h3", "h4", "h5", "h6")) break
+
+                val ol = when {
+                    cursor.tagName() == "ol" -> cursor
+                    else -> cursor.selectFirst("ol")
+                }
+                if (ol != null) {
+                    val candidateLines = parseOrderedListLines(ol)
+                    if (isLikelyInstructionList(candidateLines) && candidateLines.size > best.size) {
+                        best = candidateLines
+                    }
+                }
+
+                cursor = cursor.nextElementSibling()
+                hop++
+            }
+        }
+
+        return best
+    }
+
+    private fun parseOrderedListLines(ol: Element): List<String> {
+        val rawLines = ol.select("li")
+            .map { cleanHtml(it.text()).trim() }
+            .filter { it.length > 3 }
+
+        if (rawLines.isEmpty()) return emptyList()
+
+        val splitLines = rawLines
+            .flatMap { splitInstructionChunk(it) }
+            .map { it.trim() }
+            .filter { it.length > 3 }
+
+        if (splitLines.size >= 2) return splitLines
+
+        if (rawLines.size == 1) {
+            val numbered = Regex(
+                """(?:^|\s)(\d+\s*[.)-]\s+.{4,900}?)(?=(?:\s\d+\s*[.)-]\s+)|$)""",
+                setOf(RegexOption.DOT_MATCHES_ALL),
+            )
+                .findAll(rawLines.first())
+                .map { it.groupValues[1].replace(Regex("\\s+"), " ").trim() }
+                .toList()
+
+            if (numbered.size >= 2) return numbered
+        }
+
+        return rawLines
+    }
+
+    private fun isLikelyInstructionList(lines: List<String>): Boolean {
+        if (lines.size < 2) return false
+        if (lines.size >= 6) return true
+
+        val numberedCount = lines.count {
+            Regex("""^(\d+\s*[.)-]|étape\s*\d+|etape\s*\d+|step\s*\d+)""", RegexOption.IGNORE_CASE)
+                .containsMatchIn(it)
+        }
+        val instructionLikeCount = lines.count { looksLikeInstruction(it) }
+
+        return numberedCount >= 2 || instructionLikeCount >= maxOf(2, lines.size / 3)
+    }
+
     private fun splitInstructionChunk(text: String): List<String> {
+        val trimmed = text.trim()
+        val stepPrefixRegex = Regex(
+            """(?:^|\s)(step\s*\d+|etape\s*\d+|étape\s*\d+|\d+\s*[-).])""",
+            RegexOption.IGNORE_CASE,
+        )
+        val stepPrefixCount = stepPrefixRegex.findAll(trimmed).count()
+        if (stepPrefixCount == 1 && stepPrefixRegex.containsMatchIn(trimmed)) {
+            return listOf(trimmed)
+        }
+
         val numberedBlocks = Regex(
             """(?:^|\s)(\d+\s*[-).]\s+.{12,900}?)(?=(?:\s\d+\s*[-).]\s+)|$)""",
             setOf(RegexOption.DOT_MATCHES_ALL),
@@ -770,12 +930,56 @@ object RecipeParser {
         return recipe.ingredients.size >= 2 && recipe.instructions.size >= 2
     }
 
-    private fun pickRicherRecipe(first: Recipe?, second: Recipe?): Recipe? {
-        fun score(recipe: Recipe?): Int {
-            if (recipe == null) return -1
-            return recipe.instructions.size * 100 + recipe.ingredients.size * 10
+    private fun mergeRecipeCandidates(first: Recipe?, second: Recipe?): Recipe? {
+        if (first == null) return second
+        if (second == null) return first
+
+        val merged = first.copy(
+            title = chooseTitle(first.title, second.title),
+            description = chooseLonger(first.description, second.description),
+            sourceUrl = first.sourceUrl ?: second.sourceUrl,
+            imageUrl = first.imageUrl ?: second.imageUrl,
+            servings = if (first.servings != 4) first.servings else second.servings,
+            prepTimeMinutes = first.prepTimeMinutes ?: second.prepTimeMinutes,
+            cookTimeMinutes = first.cookTimeMinutes ?: second.cookTimeMinutes,
+            ingredients = if (first.ingredients.size >= second.ingredients.size) first.ingredients else second.ingredients,
+            instructions = if (first.instructions.size >= second.instructions.size) first.instructions else second.instructions,
+        )
+
+        val firstScore = recipeRichnessScore(first)
+        val secondScore = recipeRichnessScore(second)
+        val mergedScore = recipeRichnessScore(merged)
+
+        return when {
+            mergedScore >= firstScore && mergedScore >= secondScore -> merged
+            secondScore > firstScore -> second
+            else -> first
         }
-        return if (score(first) >= score(second)) first else second
+    }
+
+    private fun recipeRichnessScore(recipe: Recipe): Int {
+        val imageScore = if (!recipe.imageUrl.isNullOrBlank()) 15 else 0
+        return recipe.instructions.size * 100 + recipe.ingredients.size * 10 + imageScore
+    }
+
+    private fun chooseTitle(first: String, second: String): String {
+        val firstClean = first.trim()
+        val secondClean = second.trim()
+        val firstGeneric = firstClean.equals("Untitled Recipe", ignoreCase = true)
+        val secondGeneric = secondClean.equals("Untitled Recipe", ignoreCase = true)
+
+        return when {
+            firstClean.isBlank() -> secondClean
+            secondClean.isBlank() -> firstClean
+            firstGeneric && !secondGeneric -> secondClean
+            secondGeneric && !firstGeneric -> firstClean
+            secondClean.length > firstClean.length + 5 -> secondClean
+            else -> firstClean
+        }
+    }
+
+    private fun chooseLonger(first: String, second: String): String {
+        return if (second.trim().length > first.trim().length + 20) second else first
     }
 
     private fun extractServingsFromText(text: String): Int? {
