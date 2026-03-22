@@ -26,8 +26,26 @@ object IngredientParser {
     // Matches fractions like "1/2", "3/4"
     private val FRACTION_REGEX = Regex("""(\d+)\s*/\s*(\d+)""")
 
-    // Matches mixed numbers like "1 1/2" or simple numbers like "2" or "2.5"
-    private val QUANTITY_REGEX = Regex("""^(\d+\s+\d+\s*/\s*\d+|\d+\s*/\s*\d+|\d+\.?\d*)\s*""")
+    private val VULGAR_FRACTIONS = mapOf(
+        '¼' to "1/4",
+        '½' to "1/2",
+        '¾' to "3/4",
+        '⅐' to "1/7",
+        '⅑' to "1/9",
+        '⅒' to "1/10",
+        '⅓' to "1/3",
+        '⅔' to "2/3",
+        '⅕' to "1/5",
+        '⅖' to "2/5",
+        '⅗' to "3/5",
+        '⅘' to "4/5",
+        '⅙' to "1/6",
+        '⅚' to "5/6",
+        '⅛' to "1/8",
+        '⅜' to "3/8",
+        '⅝' to "5/8",
+        '⅞' to "7/8",
+    )
 
     fun parse(raw: String, index: Int = 0): Ingredient {
         val trimmed = raw.trim()
@@ -36,13 +54,25 @@ object IngredientParser {
         }
 
         var remaining = trimmed
+            .replace(Regex("""^\s*[-•●▪◦*]+\s*"""), "")
+            .replace(Regex("""^\s*\d+\s*[.)-]\s+"""), "")
         var quantity: Double? = null
 
-        // Try to extract quantity
-        val qtyMatch = QUANTITY_REGEX.find(remaining)
-        if (qtyMatch != null) {
-            quantity = parseQuantity(qtyMatch.groupValues[1].trim())
-            remaining = remaining.substring(qtyMatch.range.last + 1).trim()
+        // Try to extract quantity from first tokens (supports 1/2, 1 1/2, 1½, ½)
+        val tokens = remaining.split(Regex("\\s+")).filter { it.isNotBlank() }
+        var consumedTokens = 0
+        for (count in minOf(3, tokens.size) downTo 1) {
+            val candidate = tokens.take(count).joinToString(" ")
+            val parsed = parseQuantity(candidate)
+            if (parsed != null) {
+                quantity = parsed
+                consumedTokens = count
+                break
+            }
+        }
+
+        if (consumedTokens > 0) {
+            remaining = tokens.drop(consumedTokens).joinToString(" ").trim()
         }
 
         // Try to extract unit
@@ -67,8 +97,12 @@ object IngredientParser {
     }
 
     private fun parseQuantity(raw: String): Double? {
+        val normalizedRaw = normalizeVulgarFractions(raw.trim())
+            .replace(',', '.')
+            .replace(Regex("""\s+"""), " ")
+
         // Mixed number: "1 1/2"
-        val parts = raw.trim().split(Regex("\\s+"))
+        val parts = normalizedRaw.split(Regex("\\s+"))
         if (parts.size == 2) {
             val whole = parts[0].toDoubleOrNull() ?: return null
             val fraction = parseFraction(parts[1]) ?: return null
@@ -76,11 +110,11 @@ object IngredientParser {
         }
 
         // Simple fraction: "1/2"
-        val fraction = parseFraction(raw)
+        val fraction = parseFraction(normalizedRaw)
         if (fraction != null) return fraction
 
         // Simple number: "2" or "2.5"
-        return raw.toDoubleOrNull()
+        return normalizedRaw.toDoubleOrNull()
     }
 
     private fun parseFraction(raw: String): Double? {
@@ -89,5 +123,13 @@ object IngredientParser {
         val denominator = match.groupValues[2].toDoubleOrNull() ?: return null
         if (denominator == 0.0) return null
         return numerator / denominator
+    }
+
+    private fun normalizeVulgarFractions(raw: String): String {
+        var out = raw
+        VULGAR_FRACTIONS.forEach { (char, replacement) ->
+            out = out.replace(char.toString(), " $replacement")
+        }
+        return out.trim()
     }
 }
