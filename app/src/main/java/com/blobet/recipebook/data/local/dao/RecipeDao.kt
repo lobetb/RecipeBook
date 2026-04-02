@@ -48,6 +48,32 @@ interface RecipeDao {
     @Query("SELECT * FROM recipes WHERE id = :id")
     suspend fun getRecipeByIdOnce(id: Long): RecipeWithDetails?
 
+    @Transaction
+    @Query("SELECT * FROM recipes ORDER BY id ASC")
+    suspend fun getAllRecipesOnce(): List<RecipeWithDetails>
+
+    @Transaction
+    @Query(
+        """
+        SELECT * FROM recipes
+        WHERE sourceUrl IS NOT NULL
+          AND TRIM(sourceUrl) != ''
+          AND LOWER(TRIM(sourceUrl)) = LOWER(TRIM(:sourceUrl))
+        LIMIT 1
+        """
+    )
+    suspend fun getRecipeBySourceUrlOnce(sourceUrl: String): RecipeWithDetails?
+
+    @Transaction
+    @Query(
+        """
+        SELECT * FROM recipes
+        WHERE LOWER(TRIM(title)) = LOWER(TRIM(:title))
+        LIMIT 1
+        """
+    )
+    suspend fun getRecipeByTitleOnce(title: String): RecipeWithDetails?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertRecipe(recipe: RecipeEntity): Long
 

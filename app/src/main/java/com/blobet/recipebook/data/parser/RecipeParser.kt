@@ -1,5 +1,6 @@
 package com.blobet.recipebook.data.parser
 
+import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.JsonArray
 import com.google.gson.JsonElement
@@ -11,12 +12,14 @@ import java.text.Normalizer
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
+import org.jsoup.parser.Parser
 
 /**
  * Extracts recipe data from HTML by looking for schema.org/Recipe
  * structured data in JSON-LD format, then falling back to microdata.
  */
 object RecipeParser {
+    private const val logTag = "RecipeBookParser"
 
     private val ingredientHeadings = listOf(
         "ingredients", "ingredient", "what you need", "shopping list",
@@ -56,6 +59,7 @@ object RecipeParser {
 
     fun parseHtml(html: String, sourceUrl: String): ParseResult {
         return try {
+            Log.d(logTag, "parseHtml start url=$sourceUrl htmlLength=${html.length}")
             val doc = Jsoup.parse(html)
 
             // Try JSON-LD first (most common and reliable)
@@ -74,11 +78,17 @@ object RecipeParser {
             val mergedAll = mergeRecipeCandidates(mergedStructured, heuristicCandidate)
 
             if (mergedAll != null) {
+                Log.d(
+                    logTag,
+                    "parseHtml success url=$sourceUrl title=${mergedAll.title.take(80)} ingredients=${mergedAll.ingredients.size} instructions=${mergedAll.instructions.size}",
+                )
                 ParseResult(recipe = mergedAll)
             } else {
+                Log.w(logTag, "parseHtml no recipe found url=$sourceUrl")
                 ParseResult(recipe = null, error = "Could not find recipe data on this page. The site may not use standard recipe markup.")
             }
         } catch (e: Exception) {
+            Log.e(logTag, "parseHtml failed url=$sourceUrl", e)
             ParseResult(recipe = null, error = "Error parsing page: ${e.message}")
         }
     }
@@ -106,6 +116,7 @@ object RecipeParser {
             .flatMap { splitCompoundListLine(it) }
             .map { it.trim() }
             .filter { it.isNotBlank() }
+            .filterNot { isLikelyPageChromeNoise(it) }
 
         if (lines.isEmpty()) {
             return ParseResult(recipe = null, error = "No text recipe content found")
@@ -126,8 +137,14 @@ object RecipeParser {
 
         lines.forEach { line ->
             when {
-                looksLikeIngredientLine(line) -> ingredients.add(IngredientParser.parse(line, ingredients.size))
-                looksLikeInstructionLine(line) -> instructions.add(cleanHtml(line))
+                // If we already detected an ingredients section, avoid re-adding noisy global matches.
+                sectionParsed.ingredients.isEmpty() && looksLikeIngredientLine(line) -> {
+                    ingredients.add(IngredientParser.parse(line, ingredients.size))
+                }
+                // If we already detected instruction sections, avoid pulling trailing page text.
+                sectionParsed.instructions.isEmpty() && looksLikeInstructionLine(line) -> {
+                    instructions.add(cleanHtml(line))
+                }
             }
         }
 
@@ -183,10 +200,12 @@ object RecipeParser {
 
         val dedupedIngredients = ingredients
             .distinctBy { normalizeForMatch(it.displayText()) }
+            .filterNot { isLikelyPageChromeNoise(it.displayText()) }
         val dedupedInstructions = instructions
             .map { cleanHtml(it).trim() }
             .filter { it.isNotBlank() }
             .distinct()
+        val cleanedInstructions = trimTrailingInstructionNoise(dedupedInstructions)
 
         return ParseResult(
             recipe = Recipe(
@@ -195,9 +214,79 @@ object RecipeParser {
                 sourceUrl = sourceUrl,
                 servings = 4,
                 ingredients = dedupedIngredients,
-                instructions = dedupedInstructions,
+                instructions = cleanedInstructions,
             )
         )
+    }
+
+    private fun trimTrailingInstructionNoise(instructions: List<String>): List<String> {
+        if (instructions.isEmpty()) return instructions
+
+        // If list is clearly numbered (1..n), keep only the initial numbered block.
+        val firstWindow = instructions.take(4)
+        val numberedInWindow = firstWindow.count { startsWithStepNumber(it) }
+        if (numberedInWindow >= 3) {
+            val kept = mutableListOf<String>()
+            var started = false
+            for (line in instructions) {
+                val numbered = startsWithStepNumber(line)
+                if (numbered) {
+                    val content = line.replace(Regex("""^\s*\d+\s*[.)-]\s*"""), "").trim()
+                    if (isLikelyMetaInstructionLine(content)) {
+                        if (kept.size >= 2) break
+                        continue
+                    }
+                    if (kept.size >= 3 && !hasInstructionVerbCue(content) && content.length > 90) {
+                        break
+                    }
+                    kept.add(line)
+                    started = true
+                } else if (started) {
+                    break
+                }
+            }
+            if (kept.size >= 2) return kept
+        }
+
+        val cutoff = instructions.indexOfFirst { isLikelyPageChromeNoise(it) }
+        if (cutoff <= 1) return instructions
+        return instructions.take(cutoff)
+    }
+
+    private fun startsWithStepNumber(text: String): Boolean {
+        return Regex("""^\s*\d+\s*[.)-]\s+""").containsMatchIn(text)
+    }
+
+    private fun isLikelyPageChromeNoise(text: String): Boolean {
+        val lower = normalizeForMatch(text)
+        val noiseMarkers = listOf(
+            "cookie", "cookies", "privacy", "politique de confidentialite", "modalites", "conditions",
+            "all rights reserved", "copyright", "newsletter", "site select", "nav toggle",
+            "accessibility", "screen-reader", "contact", "facebook", "instagram", "linkedin", "youtube",
+            "je gere mes cookies", "politique d utilisation des temoins", "besoin d aide",
+            "partager la recette", "ajouter aux favoris", "remove from favourites", "decouvrir plus de recettes",
+        )
+        return noiseMarkers.any { marker -> lower.contains(marker) }
+    }
+
+    private fun isLikelyMetaInstructionLine(text: String): Boolean {
+        val lower = normalizeForMatch(text)
+        if (isLikelyPageChromeNoise(text)) return true
+        val markers = listOf(
+            "##", "ajouter aux favoris", "remove from favourites", "decouvrir plus de recettes",
+            "produits", "connexion", "inscrivez", "abonnez", "site select",
+        )
+        return markers.any { lower.contains(it) }
+    }
+
+    private fun hasInstructionVerbCue(text: String): Boolean {
+        val lower = normalizeForMatch(text)
+        return listOf(
+            "mix", "stir", "bake", "cook", "add", "heat", "serve", "boil", "preheat",
+            "place", "pour", "cover", "drain", "grill", "let", "sprinkle",
+            "melanger", "cuire", "ajouter", "chauffer", "servir", "faire bouillir",
+            "prechauffer", "verser", "couvrir", "egoutter", "laisser", "saupoudrer", "mijoter",
+        ).any { cue -> lower.contains(cue) }
     }
 
     private fun looksLikeIngredientLine(line: String): Boolean {
@@ -257,17 +346,51 @@ object RecipeParser {
     }
 
     private fun extractFromJsonLd(doc: Document, sourceUrl: String): Recipe? {
-        val scripts = doc.select("script[type=application/ld+json]")
+        val scripts = doc.select("script[type*=ld+json], script[type*=json], script")
+        Log.d(logTag, "extractFromJsonLd url=$sourceUrl scripts=${scripts.size}")
+
+        var inspected = 0
+        var parseAttempts = 0
 
         for (script in scripts) {
             try {
-                val json = JsonParser.parseString(script.data())
-                val recipeJson = findRecipeInJson(json) ?: continue
-                return jsonObjectToRecipe(recipeJson, sourceUrl)
-            } catch (e: Exception) {
-                continue
+                val raw = script.data().ifBlank { script.html() }.trim()
+                if (raw.isBlank()) continue
+                val type = script.attr("type").lowercase()
+                val likelyJsonType = type.contains("json") || type.contains("ld+json")
+                val looksJsonPayload = raw.startsWith("{") || raw.startsWith("[")
+                if (!likelyJsonType && !looksJsonPayload && !raw.contains("recipe", ignoreCase = true)) continue
+                inspected++
+
+                val candidates = buildList {
+                    add(raw)
+                    val unescaped = Parser.unescapeEntities(raw, false)
+                    if (unescaped != raw) add(unescaped)
+                }
+
+                Log.d(
+                    logTag,
+                    "jsonLd candidate scriptType=${script.attr("type")} likelyJsonType=$likelyJsonType candidateVariants=${candidates.size} rawLength=${raw.length}",
+                )
+
+                for (candidate in candidates) {
+                    try {
+                        parseAttempts++
+                        val json = JsonParser.parseString(candidate)
+                        val recipeJson = findRecipeInJson(json) ?: continue
+                        val name = recipeJson.getStringOrNull("name").orEmpty().take(80)
+                        Log.d(logTag, "jsonLd recipe found name=$name parseAttempts=$parseAttempts inspected=$inspected")
+                        return jsonObjectToRecipe(recipeJson, sourceUrl)
+                    } catch (e: Exception) {
+                        Log.d(logTag, "jsonLd parse candidate failed: ${e.javaClass.simpleName}: ${e.message}")
+                    }
+                }
+            } catch (_: Exception) {
+                // Try next script block
             }
         }
+
+        Log.w(logTag, "extractFromJsonLd no recipe match url=$sourceUrl inspected=$inspected parseAttempts=$parseAttempts")
         return null
     }
 
@@ -526,7 +649,7 @@ object RecipeParser {
             hasInstructionHeading = hasAnyHeading(root, instructionHeadings),
         )
 
-        if (ingredients.isEmpty() || instructions.isEmpty()) return null
+        if (ingredients.isEmpty() && instructions.isEmpty()) return null
 
         return HeuristicResult(
             recipe = Recipe(
@@ -927,7 +1050,7 @@ object RecipeParser {
     }
 
     private fun hasCoreRecipeData(recipe: Recipe): Boolean {
-        return recipe.ingredients.size >= 2 && recipe.instructions.size >= 2
+        return recipe.ingredients.isNotEmpty() || recipe.instructions.isNotEmpty()
     }
 
     private fun mergeRecipeCandidates(first: Recipe?, second: Recipe?): Recipe? {

@@ -56,6 +56,21 @@ class RecipeRepository @Inject constructor(
         return recipeDao.getRecipeByIdOnce(id)?.toDomainModel()
     }
 
+    suspend fun getAllRecipesOnce(): List<Recipe> {
+        return recipeDao.getAllRecipesOnce().map { it.toDomainModel() }
+    }
+
+    suspend fun findDuplicateForImport(sourceUrl: String?, title: String): Recipe? {
+        val normalizedUrl = sourceUrl?.trim().orEmpty()
+        if (normalizedUrl.isNotBlank()) {
+            recipeDao.getRecipeBySourceUrlOnce(normalizedUrl)?.let { return it.toDomainModel() }
+        }
+
+        val normalizedTitle = title.trim()
+        if (normalizedTitle.isBlank()) return null
+        return recipeDao.getRecipeByTitleOnce(normalizedTitle)?.toDomainModel()
+    }
+
     suspend fun saveRecipe(recipe: Recipe): Long {
         val now = System.currentTimeMillis()
         val recipeEntity = recipe.toEntity().copy(updatedAt = now)

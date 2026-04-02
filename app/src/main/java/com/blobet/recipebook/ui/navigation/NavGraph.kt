@@ -96,6 +96,12 @@ fun NavGraph(
                 onImportRecipeClick = {
                     navController.navigate(Screen.ImportRecipe.route)
                 },
+                onImportRecipeFileClick = { payloadJson ->
+                    pendingSharedRecipePayloadJson = payloadJson
+                    navController.navigate(Screen.ImportRecipe.route) {
+                        launchSingleTop = true
+                    }
+                },
                 onShoppingListClick = {
                     navController.navigate(Screen.ShoppingList.route)
                 },

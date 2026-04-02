@@ -1,6 +1,8 @@
 package com.blobet.recipebook.ui.home
 
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
@@ -57,6 +59,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.Alignment
@@ -70,6 +73,9 @@ import com.blobet.recipebook.R
 import com.blobet.recipebook.ui.components.RecipeCard
 import com.blobet.recipebook.ui.components.SearchBar
 import com.blobet.recipebook.util.BugReportUtils
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -77,6 +83,7 @@ fun HomeScreen(
     onRecipeClick: (Long) -> Unit,
     onAddRecipeClick: () -> Unit,
     onImportRecipeClick: () -> Unit,
+    onImportRecipeFileClick: (String) -> Unit,
     onShoppingListClick: () -> Unit,
     onSettingsClick: () -> Unit,
     isKeepScreenOn: Boolean,
@@ -89,6 +96,27 @@ fun HomeScreen(
     var showFilters by remember { mutableStateOf(false) }
     var fabExpanded by remember { mutableStateOf(false) }
     var showActionsMenu by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    val importFileLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            try {
+                val payload = withContext(Dispatchers.IO) {
+                    context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+                }
+                if (payload.isNullOrBlank()) {
+                    Toast.makeText(context, context.getString(R.string.error_invalid_recipe_file), Toast.LENGTH_SHORT).show()
+                } else {
+                    onImportRecipeFileClick(payload)
+                }
+            } catch (_: Exception) {
+                Toast.makeText(context, context.getString(R.string.error_invalid_recipe_file), Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -236,6 +264,21 @@ fun HomeScreen(
                             text = { Text(stringResource(R.string.home_import_from_url)) },
                             containerColor = MaterialTheme.colorScheme.primary,
                             contentColor = MaterialTheme.colorScheme.onPrimary,
+                        )
+                        ExtendedFloatingActionButton(
+                            onClick = {
+                                fabExpanded = false
+                                importFileLauncher.launch(
+                                    arrayOf(
+                                        "application/vnd.blobet.recipebook+json",
+                                        "application/json",
+                                        "*/*",
+                                    )
+                                )
+                            },
+                            icon = { Icon(Icons.Default.ArrowDownward, contentDescription = null) },
+                            text = { Text(stringResource(R.string.home_import_recipebook_file)) },
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
                         )
                         ExtendedFloatingActionButton(
                             onClick = {

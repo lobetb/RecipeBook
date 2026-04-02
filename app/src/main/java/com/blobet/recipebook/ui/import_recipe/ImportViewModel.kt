@@ -20,6 +20,9 @@ import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
 import java.net.URLEncoder
 import java.net.URL
+import java.nio.charset.Charset
+import java.util.zip.GZIPInputStream
+import java.util.zip.InflaterInputStream
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import com.google.gson.JsonParser
@@ -30,6 +33,10 @@ data class ImportUiState(
     val optionalDescriptionText: String = "",
     val isLoading: Boolean = false,
     val parsedRecipe: Recipe? = null,
+    val duplicateRecipeId: Long? = null,
+    val duplicateRecipeTitle: String? = null,
+    val duplicateMatchedByUrl: Boolean = false,
+    val pendingSaveRecipe: Recipe? = null,
     val errorMessage: String? = null,
     val savedRecipeId: Long? = null,
 )
@@ -70,8 +77,8 @@ class ImportViewModel @Inject constructor(
         if (isTikTokUrl(extractedUrl)) {
             val textParseResult = RecipeParser.parseTextRecipe(rawSharedText, extractedUrl)
             if (textParseResult.recipe != null &&
-                textParseResult.recipe.ingredients.isNotEmpty() &&
-                textParseResult.recipe.instructions.isNotEmpty()
+                (textParseResult.recipe.ingredients.isNotEmpty() ||
+                    textParseResult.recipe.instructions.isNotEmpty())
             ) {
                 _uiState.update {
                     it.copy(
@@ -95,12 +102,16 @@ class ImportViewModel @Inject constructor(
         try {
             val payload = RecipeShareCodec.decode(payloadJson)
             val recipe = payload.toRecipe()
-            _uiState.update {
-                it.copy(
-                    parsedRecipe = recipe,
-                    errorMessage = null,
-                    isLoading = false,
-                    url = recipe.sourceUrl.orEmpty(),
+                _uiState.update {
+                    it.copy(
+                        parsedRecipe = recipe,
+                        duplicateRecipeId = null,
+                        duplicateRecipeTitle = null,
+                        duplicateMatchedByUrl = false,
+                        pendingSaveRecipe = null,
+                        errorMessage = null,
+                        isLoading = false,
+                        url = recipe.sourceUrl.orEmpty(),
                 )
             }
         } catch (_: Exception) {
@@ -148,6 +159,10 @@ class ImportViewModel @Inject constructor(
                         it.copy(
                             isLoading = false,
                             parsedRecipe = finalResult.recipe,
+                            duplicateRecipeId = null,
+                            duplicateRecipeTitle = null,
+                            duplicateMatchedByUrl = false,
+                            pendingSaveRecipe = null,
                         )
                     }
                 } else {
@@ -181,32 +196,127 @@ class ImportViewModel @Inject constructor(
     }
 
     private fun parseGenericRecipeWithAmpFallback(url: String): RecipeParser.ParseResult {
-        val primaryHtml = fetchHtml(url)
-        val primaryResult = RecipeParser.parseHtml(primaryHtml, url)
+        var mobileHtml: String? = null
+        var bestRecipe: Recipe? = null
+        var bestError: String? = null
 
-        if (!isLowQualityExtraction(primaryResult.recipe)) {
-            return primaryResult
-        }
-
-        val ampUrl = extractAmpUrl(primaryHtml, url)
-        if (ampUrl.isNullOrBlank() || ampUrl == url) {
-            return primaryResult
-        }
-
-        return try {
-            val ampHtml = fetchHtml(ampUrl)
-            val ampResult = RecipeParser.parseHtml(ampHtml, ampUrl)
-            val mergedRecipe = mergeRecipeCandidates(primaryResult.recipe, ampResult.recipe)
-
-            if (mergedRecipe != null) {
-                RecipeParser.ParseResult(recipe = mergedRecipe)
-            } else if (ampResult.recipe != null) {
-                ampResult
+        try {
+            mobileHtml = fetchHtml(url, useDesktopUserAgent = false)
+            val mobileResult = RecipeParser.parseHtml(mobileHtml, url)
+            if (!isLowQualityExtraction(mobileResult.recipe)) {
+                return mobileResult
+            }
+            bestRecipe = mobileResult.recipe
+            bestError = mobileResult.error
+        } catch (e: Exception) {
+            bestError = if (e is HttpStatusException && e.statusCode == 403) {
+                context.getString(R.string.error_site_forbidden)
             } else {
-                primaryResult
+                e.message ?: e.javaClass.simpleName
+            }
+        }
+
+        // Some providers serve richer content when common output query params are present.
+        if (bestRecipe == null || isLowQualityExtraction(bestRecipe)) {
+            val queryVariants = listOf("output=amp", "output=1", "print=1")
+            for (variant in queryVariants) {
+                val variantUrl = appendQueryParam(url, variant)
+                try {
+                    val variantHtml = fetchHtml(variantUrl, useDesktopUserAgent = true)
+                    val variantResult = RecipeParser.parseHtml(variantHtml, variantUrl)
+                    bestRecipe = mergeRecipeCandidates(bestRecipe, variantResult.recipe)
+                    if (bestRecipe == null && variantResult.recipe != null) {
+                        bestRecipe = variantResult.recipe
+                    }
+                    if (bestRecipe != null && !isLowQualityExtraction(bestRecipe)) {
+                        return RecipeParser.ParseResult(recipe = bestRecipe)
+                    }
+                } catch (_: Exception) {
+                    // Continue trying other variants
+                }
+            }
+        }
+
+        // Some websites expose richer structured data on desktop markup only.
+        try {
+            val desktopHtml = fetchHtml(url, useDesktopUserAgent = true)
+            val desktopResult = RecipeParser.parseHtml(desktopHtml, url)
+            bestRecipe = mergeRecipeCandidates(bestRecipe, desktopResult.recipe)
+            if (bestRecipe == null && desktopResult.recipe != null) {
+                bestRecipe = desktopResult.recipe
+            }
+            if (!desktopResult.error.isNullOrBlank()) {
+                bestError = desktopResult.error
             }
         } catch (_: Exception) {
-            primaryResult
+            // Keep mobile result as fallback
+        }
+
+        val ampUrl = mobileHtml?.let { extractAmpUrl(it, url) }
+        if (!ampUrl.isNullOrBlank() && ampUrl != url) {
+            try {
+                val ampHtml = fetchHtml(ampUrl)
+                val ampResult = RecipeParser.parseHtml(ampHtml, ampUrl)
+                bestRecipe = mergeRecipeCandidates(bestRecipe, ampResult.recipe)
+                if (bestRecipe == null && ampResult.recipe != null) {
+                    bestRecipe = ampResult.recipe
+                }
+                if (!ampResult.error.isNullOrBlank()) {
+                    bestError = ampResult.error
+                }
+            } catch (_: Exception) {
+                // Ignore AMP failures
+            }
+        }
+
+        return if (bestRecipe != null) {
+            RecipeParser.ParseResult(recipe = bestRecipe)
+        } else {
+            // Last-resort fallback for anti-bot/login shells: fetch a text-rendered copy
+            // and parse it as plain recipe text.
+            val textFallback = tryParseViaTextMirror(url)
+            if (textFallback.recipe != null || !textFallback.error.isNullOrBlank()) {
+                textFallback
+            } else {
+                RecipeParser.ParseResult(recipe = null, error = bestError)
+            }
+        }
+    }
+
+    private fun tryParseViaTextMirror(url: String): RecipeParser.ParseResult {
+        return try {
+            val mirrorUrl = "https://r.jina.ai/http://${url.removePrefix("https://").removePrefix("http://")}" 
+            val rendered = fetchHtml(mirrorUrl, useDesktopUserAgent = true)
+            val parsed = RecipeParser.parseTextRecipe(rendered, url)
+            val recipe = parsed.recipe
+            if (recipe != null) {
+                val blockedTitle = recipe.title.contains("human verification", ignoreCase = true) ||
+                    recipe.title.contains("cloudflare", ignoreCase = true)
+                val blockedBody = recipe.description.contains("method not allowed", ignoreCase = true) ||
+                    recipe.description.contains("security check", ignoreCase = true) ||
+                    recipe.instructions.any {
+                        it.contains("human", ignoreCase = true) ||
+                            it.contains("security check", ignoreCase = true) ||
+                            it.contains("verification", ignoreCase = true)
+                    }
+                if (blockedTitle || blockedBody) {
+                    return RecipeParser.ParseResult(
+                        recipe = null,
+                        error = context.getString(R.string.error_site_human_verification),
+                    )
+                }
+            }
+            parsed
+        } catch (_: Exception) {
+            RecipeParser.ParseResult(recipe = null)
+        }
+    }
+
+    private fun appendQueryParam(url: String, param: String): String {
+        return if (url.contains("?")) {
+            "$url&$param"
+        } else {
+            "$url?$param"
         }
     }
 
@@ -226,13 +336,10 @@ class ImportViewModel @Inject constructor(
                 connection.instanceFollowRedirects = false
                 connection.connectTimeout = 15_000
                 connection.readTimeout = 15_000
-                connection.setRequestProperty(
-                    "User-Agent",
-                    if (useDesktopUserAgent) desktopUserAgent else mobileUserAgent,
-                )
-                connection.setRequestProperty(
-                    "Accept",
-                    "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+                applyBrowserLikeHeaders(
+                    connection = connection,
+                    useDesktopUserAgent = useDesktopUserAgent,
+                    referer = currentUrl,
                 )
 
                 val responseCode = connection.responseCode
@@ -254,13 +361,97 @@ class ImportViewModel @Inject constructor(
                     throw HttpStatusException(responseCode, "HTTP $responseCode: ${connection.responseMessage}")
                 }
 
-                return connection.inputStream.bufferedReader().use { it.readText() }
+                val html = readResponseText(connection)
+                // If we received a login/paywall shell, retry once with lightweight anti-bot headers.
+                if (looksLikeLoginShell(html)) {
+                    connection.disconnect()
+                    return fetchHtmlWithBypassHeaders(currentUrl, useDesktopUserAgent)
+                }
+                return html
             } finally {
                 connection.disconnect()
             }
         }
 
         throw Exception("Too many redirects")
+    }
+
+    private fun fetchHtmlWithBypassHeaders(urlString: String, useDesktopUserAgent: Boolean): String {
+        val url = URL(urlString)
+        val connection = url.openConnection() as HttpURLConnection
+        try {
+            connection.instanceFollowRedirects = true
+            connection.connectTimeout = 15_000
+            connection.readTimeout = 15_000
+            applyBrowserLikeHeaders(
+                connection = connection,
+                useDesktopUserAgent = useDesktopUserAgent,
+                referer = urlString,
+            )
+            connection.setRequestProperty("Cache-Control", "no-cache, max-age=0")
+            connection.setRequestProperty("Pragma", "no-cache")
+            val code = connection.responseCode
+            if (code != 200) {
+                throw HttpStatusException(code, "HTTP $code: ${connection.responseMessage}")
+            }
+            return readResponseText(connection)
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    private fun looksLikeLoginShell(html: String): Boolean {
+        val lower = html.lowercase()
+        return (lower.contains("inloggen") || lower.contains("log in") || lower.contains("registreer") || lower.contains("forgot_password")) &&
+            !lower.contains("recipeinstructions") &&
+            !lower.contains("recipeingredient")
+    }
+
+    private fun applyBrowserLikeHeaders(
+        connection: HttpURLConnection,
+        useDesktopUserAgent: Boolean,
+        referer: String,
+    ) {
+        connection.setRequestProperty(
+            "User-Agent",
+            if (useDesktopUserAgent) desktopUserAgent else mobileUserAgent,
+        )
+        connection.setRequestProperty(
+            "Accept",
+            "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        )
+        connection.setRequestProperty("Accept-Language", "fr-BE,fr;q=0.9,en-US;q=0.8,en;q=0.7")
+        connection.setRequestProperty("Connection", "keep-alive")
+        connection.setRequestProperty("Upgrade-Insecure-Requests", "1")
+        connection.setRequestProperty("Sec-Fetch-Dest", "document")
+        connection.setRequestProperty("Sec-Fetch-Mode", "navigate")
+        connection.setRequestProperty("Sec-Fetch-Site", "none")
+        connection.setRequestProperty("Sec-Fetch-User", "?1")
+        connection.setRequestProperty("Referer", referer)
+    }
+
+    private fun readResponseText(connection: HttpURLConnection): String {
+        val rawStream = connection.inputStream
+        val encoding = connection.getHeaderField("Content-Encoding")?.lowercase().orEmpty()
+        val decodedStream = when {
+            encoding.contains("gzip") -> GZIPInputStream(rawStream)
+            encoding.contains("deflate") -> InflaterInputStream(rawStream)
+            else -> rawStream
+        }
+
+        val contentType = connection.getHeaderField("Content-Type").orEmpty()
+        val charsetName = Regex("charset=([A-Za-z0-9._-]+)", RegexOption.IGNORE_CASE)
+            .find(contentType)
+            ?.groupValues
+            ?.getOrNull(1)
+            ?: "UTF-8"
+        val charset = try {
+            Charset.forName(charsetName)
+        } catch (_: Exception) {
+            Charsets.UTF_8
+        }
+
+        return decodedStream.bufferedReader(charset).use { it.readText() }
     }
 
     private fun parseTikTokRecipe(url: String): RecipeParser.ParseResult {
@@ -593,8 +784,32 @@ class ImportViewModel @Inject constructor(
     fun saveRecipe(recipe: Recipe) {
         viewModelScope.launch {
             try {
+                val duplicate = recipeRepository.findDuplicateForImport(recipe.sourceUrl, recipe.title)
+                if (duplicate != null) {
+                    val byUrl = !recipe.sourceUrl.isNullOrBlank() &&
+                        !duplicate.sourceUrl.isNullOrBlank() &&
+                        recipe.sourceUrl.trim().equals(duplicate.sourceUrl.trim(), ignoreCase = true)
+                    _uiState.update {
+                        it.copy(
+                            duplicateRecipeId = duplicate.id,
+                            duplicateRecipeTitle = duplicate.title,
+                            duplicateMatchedByUrl = byUrl,
+                            pendingSaveRecipe = recipe,
+                        )
+                    }
+                    return@launch
+                }
+
                 val id = recipeRepository.saveRecipe(recipe)
-                _uiState.update { it.copy(savedRecipeId = id) }
+                _uiState.update {
+                    it.copy(
+                        savedRecipeId = id,
+                        pendingSaveRecipe = null,
+                        duplicateRecipeId = null,
+                        duplicateRecipeTitle = null,
+                        duplicateMatchedByUrl = false,
+                    )
+                }
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
@@ -610,6 +825,48 @@ class ImportViewModel @Inject constructor(
 
     fun clearError() {
         _uiState.update { it.copy(errorMessage = null) }
+    }
+
+    fun confirmSaveDuplicate() {
+        val recipe = _uiState.value.pendingSaveRecipe ?: return
+        viewModelScope.launch {
+            try {
+                val id = recipeRepository.saveRecipe(recipe)
+                _uiState.update {
+                    it.copy(
+                        savedRecipeId = id,
+                        pendingSaveRecipe = null,
+                        duplicateRecipeId = null,
+                        duplicateRecipeTitle = null,
+                        duplicateMatchedByUrl = false,
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        pendingSaveRecipe = null,
+                        duplicateRecipeId = null,
+                        duplicateRecipeTitle = null,
+                        duplicateMatchedByUrl = false,
+                        errorMessage = context.getString(
+                            R.string.error_save,
+                            e.message ?: e.javaClass.simpleName,
+                        )
+                    )
+                }
+            }
+        }
+    }
+
+    fun cancelSaveDuplicate() {
+        _uiState.update {
+            it.copy(
+                pendingSaveRecipe = null,
+                duplicateRecipeId = null,
+                duplicateRecipeTitle = null,
+                duplicateMatchedByUrl = false,
+            )
+        }
     }
 
     private fun extractFirstUrl(text: String): String? {

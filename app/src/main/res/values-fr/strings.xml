@@ -12,6 +12,7 @@
     <string name="home_settings">Paramètres</string>
     <string name="home_shopping_list">Liste de courses</string>
     <string name="home_import_from_url">Importer depuis une URL</string>
+    <string name="home_import_recipebook_file">Ouvrir un fichier .recipebook</string>
     <string name="home_create_manually">Créer manuellement</string>
     <string name="home_add_recipe">Ajouter une recette</string>
     <string name="home_no_recipes_found">Aucune recette trouvée</string>
@@ -52,6 +53,8 @@
     <string name="import_fetching">Récupération de la recette...</string>
     <string name="import_extract_recipe">Extraire la recette</string>
     <string name="import_preview">Aperçu de la recette</string>
+    <string name="import_partial_recipe_missing_ingredients">Import partiel : les ingrédients sont manquants (cette page peut les cacher derrière un paywall).</string>
+    <string name="import_partial_recipe_missing_instructions">Import partiel : les instructions sont manquantes (cette page peut les cacher derrière un paywall).</string>
     <string name="label_prep">Préparation : %1$s</string>
     <string name="label_cook">Cuisson : %1$s</string>
     <string name="label_servings">Portions : %1$d</string>
@@ -135,6 +138,11 @@
     <string name="restore_failed">Échec de la restauration : %1$s</string>
     <string name="restore_cannot_open_source">Impossible d\'ouvrir le fichier de sauvegarde sélectionné.</string>
     <string name="restore_missing_db_entry">L\'archive de sauvegarde ne contient pas le fichier principal de base de données.</string>
+    <string name="restore_mode_title">Mode de restauration</string>
+    <string name="restore_mode_description">Choisissez comment appliquer cette sauvegarde.</string>
+    <string name="restore_mode_replace">Remplacer la base actuelle</string>
+    <string name="restore_mode_merge">Fusionner avec la base actuelle</string>
+    <string name="restore_merge_success">Fusion terminée : %1$d importées, %2$d doublons ignorés.</string>
     <string name="restart_app_now">Redémarrer l\'application</string>
     <string name="support_kofi_message">Si vous le souhaitez, vous pouvez me soutenir sur Ko-Fi</string>
     <string name="support_kofi_button">Soutenir sur Ko-Fi</string>
@@ -159,10 +167,16 @@
     <string name="error_tiktok_no_description">Impossible de trouver une description TikTok à analyser.</string>
     <string name="error_tiktok_fetch">Échec du chargement de la page TikTok : %1$s</string>
     <string name="error_site_forbidden">Ce site bloque l\'accès automatisé (HTTP 403). Ouvrez la page dans un navigateur puis collez le texte de la recette dans le champ descriptif optionnel.</string>
+    <string name="error_site_human_verification">Ce site est protégé par une vérification humaine/anti-bot. Ouvrez la page dans votre navigateur, copiez le texte de la recette, puis collez-le dans le champ descriptif optionnel.</string>
     <string name="error_invalid_recipe_file">Fichier de recette partagé invalide.</string>
     <string name="error_recipe_not_found">Recette introuvable</string>
     <string name="error_save_image">Échec de l\'enregistrement de l\'image : %1$s</string>
     <string name="error_title_required">Le titre est obligatoire</string>
+    <string name="duplicate_recipe_title">Recette potentiellement en double</string>
+    <string name="duplicate_recipe_message_url">Une recette avec la même URL source existe déjà : %1$s</string>
+    <string name="duplicate_recipe_message_title">Une recette avec le même titre existe déjà : %1$s</string>
+    <string name="duplicate_recipe_import_anyway">Importer quand même</string>
+    <string name="duplicate_recipe_cancel">Annuler l\'import</string>
 
     <string name="remove_tag">Supprimer %1$s</string>
     <string name="detail_add_tag">Ajouter une étiquette</string>

@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.Image
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -31,7 +32,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -56,6 +59,7 @@ fun SettingsScreen(
         ?: LANGUAGE_EN
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    var pendingRestoreUri by remember { mutableStateOf<Uri?>(null) }
 
     val backupLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/zip")
@@ -69,7 +73,7 @@ fun SettingsScreen(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
         if (uri != null) {
-            viewModel.restoreDatabaseFromUri(uri)
+            pendingRestoreUri = uri
         }
     }
 
@@ -101,6 +105,49 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                if (pendingRestoreUri != null) {
+                    AlertDialog(
+                        onDismissRequest = { pendingRestoreUri = null },
+                        title = { Text(stringResource(R.string.restore_mode_title)) },
+                        text = { Text(stringResource(R.string.restore_mode_description)) },
+                        confirmButton = {
+                            Button(
+                                onClick = {
+                                    val uri = pendingRestoreUri
+                                    pendingRestoreUri = null
+                                    if (uri != null) {
+                                        viewModel.restoreDatabaseFromUri(uri, RestoreMode.REPLACE)
+                                    }
+                                },
+                            ) {
+                                Text(stringResource(R.string.restore_mode_replace))
+                            }
+                        },
+                        dismissButton = {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(
+                                    onClick = {
+                                        val uri = pendingRestoreUri
+                                        pendingRestoreUri = null
+                                        if (uri != null) {
+                                            viewModel.restoreDatabaseFromUri(uri, RestoreMode.MERGE)
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Text(stringResource(R.string.restore_mode_merge))
+                                }
+                                Button(
+                                    onClick = { pendingRestoreUri = null },
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Text(stringResource(R.string.cancel))
+                                }
+                            }
+                        },
+                    )
+                }
+
                 Text(
                     text = stringResource(R.string.settings_language),
                     style = MaterialTheme.typography.titleMedium,

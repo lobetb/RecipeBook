@@ -18,9 +18,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ContentPaste
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -31,6 +34,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -66,6 +70,7 @@ fun ImportScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val humanVerificationMessage = stringResource(R.string.error_site_human_verification)
     val clipboardManager = LocalClipboardManager.current
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -78,7 +83,10 @@ fun ImportScreen(
 
     LaunchedEffect(uiState.errorMessage) {
         uiState.errorMessage?.let { msg ->
-            snackbarHostState.showSnackbar(msg)
+            snackbarHostState.showSnackbar(
+                message = msg,
+                duration = if (msg == humanVerificationMessage) SnackbarDuration.Long else SnackbarDuration.Short,
+            )
             viewModel.clearError()
         }
     }
@@ -116,6 +124,39 @@ fun ImportScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            val duplicateTitle = uiState.duplicateRecipeTitle
+            if (uiState.pendingSaveRecipe != null && duplicateTitle != null) {
+                AlertDialog(
+                    onDismissRequest = { viewModel.cancelSaveDuplicate() },
+                    title = { Text(stringResource(R.string.duplicate_recipe_title)) },
+                    text = {
+                        Text(
+                            text = if (uiState.duplicateMatchedByUrl) {
+                                stringResource(
+                                    R.string.duplicate_recipe_message_url,
+                                    duplicateTitle,
+                                )
+                            } else {
+                                stringResource(
+                                    R.string.duplicate_recipe_message_title,
+                                    duplicateTitle,
+                                )
+                            }
+                        )
+                    },
+                    confirmButton = {
+                        Button(onClick = { viewModel.confirmSaveDuplicate() }) {
+                            Text(stringResource(R.string.duplicate_recipe_import_anyway))
+                        }
+                    },
+                    dismissButton = {
+                        Button(onClick = { viewModel.cancelSaveDuplicate() }) {
+                            Text(stringResource(R.string.duplicate_recipe_cancel))
+                        }
+                    },
+                )
+            }
+
             // URL input
             Text(
                 text = stringResource(R.string.import_paste_url),
@@ -225,6 +266,30 @@ fun ImportScreen(
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 3,
+                            )
+                        }
+
+                        val missingIngredients = recipe.ingredients.isEmpty() && recipe.instructions.isNotEmpty()
+                        val missingInstructions = recipe.instructions.isEmpty() && recipe.ingredients.isNotEmpty()
+                        if (missingIngredients || missingInstructions) {
+                            AssistChip(
+                                onClick = { },
+                                enabled = false,
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Info,
+                                        contentDescription = null,
+                                    )
+                                },
+                                label = {
+                                    Text(
+                                        text = if (missingIngredients) {
+                                            stringResource(R.string.import_partial_recipe_missing_ingredients)
+                                        } else {
+                                            stringResource(R.string.import_partial_recipe_missing_instructions)
+                                        },
+                                    )
+                                },
                             )
                         }
 
