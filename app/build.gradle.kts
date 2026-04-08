@@ -14,6 +14,24 @@ if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
+fun signingValue(propertyKey: String, envKey: String): String? {
+    val fromFile = keystoreProperties.getProperty(propertyKey)?.trim().orEmpty()
+    if (fromFile.isNotBlank()) return fromFile
+    val fromEnv = System.getenv(envKey)?.trim().orEmpty()
+    return fromEnv.ifBlank { null }
+}
+
+val releaseStoreFileRaw = signingValue("storeFile", "RELEASE_STORE_FILE")
+val releaseStorePassword = signingValue("storePassword", "RELEASE_STORE_PASSWORD")
+val releaseKeyAlias = signingValue("keyAlias", "RELEASE_KEY_ALIAS")
+val releaseKeyPassword = signingValue("keyPassword", "RELEASE_KEY_PASSWORD")
+
+val releaseSigningReady =
+    !releaseStoreFileRaw.isNullOrBlank() &&
+        !releaseStorePassword.isNullOrBlank() &&
+        !releaseKeyAlias.isNullOrBlank() &&
+        !releaseKeyPassword.isNullOrBlank()
+
 android {
     namespace = "com.blobet.recipebook"
     compileSdk = 36
@@ -23,7 +41,7 @@ android {
         minSdk = 26
         targetSdk = 35
         versionCode = 6
-        versionName = "1.3.1"
+        versionName = "1.5"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -33,8 +51,8 @@ android {
 
     signingConfigs {
         create("release") {
-            if (keystorePropertiesFile.exists()) {
-                val storeFilePath = (keystoreProperties["storeFile"] as String).let { path ->
+            if (releaseSigningReady) {
+                val storeFilePath = releaseStoreFileRaw!!.let { path ->
                     if (path.startsWith("~")) {
                         path.replaceFirst("~", System.getProperty("user.home"))
                     } else {
@@ -42,9 +60,9 @@ android {
                     }
                 }
                 storeFile = file(storeFilePath)
-                storePassword = keystoreProperties["storePassword"] as String
-                keyAlias = keystoreProperties["keyAlias"] as String
-                keyPassword = keystoreProperties["keyPassword"] as String
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
             }
         }
     }
@@ -52,7 +70,11 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = if (releaseSigningReady) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -141,6 +163,24 @@ val checkFrenchStringsQuality by tasks.registering {
 
 tasks.named("preBuild") {
     dependsOn(checkFrenchStringsQuality)
+}
+
+val releaseTasksRequested = gradle.startParameter.taskNames.any {
+    it.contains("Release", ignoreCase = true)
+}
+
+if (releaseTasksRequested && !releaseSigningReady) {
+    throw GradleException(
+        """
+        Missing release signing configuration.
+
+        Provide signing values via either:
+        1) key.properties in project root with keys:
+           storeFile, storePassword, keyAlias, keyPassword
+        2) Environment variables:
+           RELEASE_STORE_FILE, RELEASE_STORE_PASSWORD, RELEASE_KEY_ALIAS, RELEASE_KEY_PASSWORD
+        """.trimIndent()
+    )
 }
 
 dependencies {
