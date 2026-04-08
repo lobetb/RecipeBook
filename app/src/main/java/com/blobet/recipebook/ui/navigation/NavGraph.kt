@@ -1,5 +1,8 @@
 package com.blobet.recipebook.ui.navigation
 
+import android.app.Activity
+import android.content.ContextWrapper
+import android.view.WindowManager
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -11,6 +14,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.State
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -33,9 +37,22 @@ fun NavGraph(
     val navController = rememberNavController()
     var keepScreenOn by rememberSaveable { mutableStateOf(false) }
     val rootView = LocalView.current
+    val context = LocalContext.current
+    val activity = remember(context) { context.findActivity() }
 
     SideEffect {
         rootView.keepScreenOn = keepScreenOn
+    }
+    DisposableEffect(activity, keepScreenOn) {
+        val window = activity?.window
+        if (keepScreenOn) {
+            window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else {
+            window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+        onDispose {
+            window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
     }
     DisposableEffect(rootView) {
         onDispose {
@@ -208,4 +225,13 @@ fun NavGraph(
             )
         }
     }
+}
+
+private fun android.content.Context.findActivity(): Activity? {
+    var current = this
+    while (current is ContextWrapper) {
+        if (current is Activity) return current
+        current = current.baseContext
+    }
+    return null
 }

@@ -25,6 +25,7 @@ data class DetailUiState(
     val recipe: Recipe? = null,
     val currentServings: Int = 4,
     val unitSystem: UnitSystem = UnitSystem.ORIGINAL,
+    val textScale: Float = 1f,
     val availableTags: List<Tag> = emptyList(),
     val addedIngredientKeys: Set<String> = emptySet(),
     val isLoading: Boolean = true,
@@ -42,12 +43,14 @@ class DetailViewModel @Inject constructor(
 
     private val recipeId: Long = savedStateHandle.get<Long>("recipeId") ?: 0L
     private val unitPrefKey = "detail_units_$recipeId"
+    private val textScalePrefKey = "detail_text_scale_$recipeId"
 
     private val _uiState = MutableStateFlow(DetailUiState())
     val uiState: StateFlow<DetailUiState> = _uiState.asStateFlow()
 
     init {
         loadPersistedUnitSystem()
+        loadPersistedTextScale()
         observeTags()
         loadRecipe()
     }
@@ -66,6 +69,18 @@ class DetailViewModel @Inject constructor(
             .getString(unitPrefKey, UnitSystem.ORIGINAL.name)
         val system = UnitSystem.entries.firstOrNull { it.name == saved } ?: UnitSystem.ORIGINAL
         _uiState.update { it.copy(unitSystem = system) }
+    }
+
+    private fun loadPersistedTextScale() {
+        val savedScale = context
+            .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getFloat(textScalePrefKey, 1f)
+        val normalized = when {
+            savedScale < 0.95f -> 0.9f
+            savedScale < 1.15f -> 1f
+            else -> 1.2f
+        }
+        _uiState.update { it.copy(textScale = normalized) }
     }
 
     private fun loadRecipe() {
@@ -96,6 +111,20 @@ class DetailViewModel @Inject constructor(
             .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
             .putString(unitPrefKey, system.name)
+            .apply()
+    }
+
+    fun onCycleTextScale() {
+        val next = when {
+            _uiState.value.textScale < 0.95f -> 1f
+            _uiState.value.textScale < 1.15f -> 1.2f
+            else -> 0.9f
+        }
+        _uiState.update { it.copy(textScale = next) }
+        context
+            .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putFloat(textScalePrefKey, next)
             .apply()
     }
 

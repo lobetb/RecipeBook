@@ -7,6 +7,7 @@
     <string name="home_sort_recipes">Sort recipes</string>
     <string name="home_layout_options">Layout options</string>
     <string name="more_actions">More actions</string>
+    <string name="detail_text_size">Change text size</string>
     <string name="keep_screen_on_enable">Enable keep screen on</string>
     <string name="keep_screen_on_disable">Disable keep screen on</string>
     <string name="home_settings">Settings</string>

@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import com.blobet.recipebook.R
 import com.blobet.recipebook.domain.model.IngredientConversion
@@ -31,6 +32,7 @@ fun IngredientList(
     originalServings: Int,
     currentServings: Int,
     unitSystem: UnitSystem = UnitSystem.ORIGINAL,
+    textScale: Float = 1f,
     addedIngredientKeys: Set<String> = emptySet(),
     onAddIngredient: ((Ingredient) -> Unit)? = null,
     modifier: Modifier = Modifier,
@@ -42,6 +44,7 @@ fun IngredientList(
             IngredientRow(
                 ingredient = scaled,
                 unitSystem = unitSystem,
+                textScale = textScale,
                 isAdded = ingredientKey in addedIngredientKeys,
                 onAdd = if (onAddIngredient != null) ({ onAddIngredient(scaled) }) else null,
             )
@@ -57,9 +60,13 @@ fun IngredientList(
 private fun IngredientRow(
     ingredient: Ingredient,
     unitSystem: UnitSystem,
+    textScale: Float,
     isAdded: Boolean,
     onAdd: (() -> Unit)?,
 ) {
+    val baseBody = MaterialTheme.typography.bodyMedium
+    val scaledBody: TextStyle = baseBody.copy(fontSize = baseBody.fontSize * textScale)
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -72,20 +79,20 @@ private fun IngredientRow(
         if (qtyText.isNotBlank()) {
             Text(
                 text = "$qtyText ",
-                style = MaterialTheme.typography.bodyMedium,
+                style = scaledBody,
                 fontWeight = FontWeight.SemiBold,
             )
         }
         if (unitText.isNotBlank()) {
             Text(
                 text = "$unitText ",
-                style = MaterialTheme.typography.bodyMedium,
+                style = scaledBody,
                 color = MaterialTheme.colorScheme.primary,
             )
         }
         Text(
             text = IngredientConversion.convertTemperatureText(display.nameText, unitSystem),
-            style = MaterialTheme.typography.bodyMedium,
+            style = scaledBody,
         )
 
         if (onAdd != null) {

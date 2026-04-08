@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.RestaurantMenu
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.ScreenLockPortrait
+import androidx.compose.material.icons.outlined.FormatSize
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
@@ -64,6 +65,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
@@ -110,6 +112,25 @@ fun DetailScreen(
                 actions = {
                     val recipe = uiState.recipe
                     if (recipe != null) {
+                        IconButton(
+                            onClick = { viewModel.onCycleTextScale() }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.FormatSize,
+                                contentDescription = stringResource(R.string.detail_text_size),
+                                tint = MaterialTheme.colorScheme.onSurface,
+                            )
+                        }
+                        Text(
+                            text = when {
+                                uiState.textScale < 0.95f -> "S"
+                                uiState.textScale < 1.15f -> "M"
+                                else -> "L"
+                            },
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(end = 4.dp),
+                        )
                         IconButton(onClick = { viewModel.onToggleFavorite() }) {
                             Icon(
                                 imageVector = if (recipe.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
@@ -194,6 +215,13 @@ fun DetailScreen(
                 Text(stringResource(R.string.recipe_not_found))
             }
         } else {
+            val bodyLargeScaled: TextStyle = MaterialTheme.typography.bodyLarge.copy(
+                fontSize = MaterialTheme.typography.bodyLarge.fontSize * uiState.textScale,
+            )
+            val bodyMediumScaled: TextStyle = MaterialTheme.typography.bodyMedium.copy(
+                fontSize = MaterialTheme.typography.bodyMedium.fontSize * uiState.textScale,
+            )
+
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -235,14 +263,16 @@ fun DetailScreen(
                     // Title
                     Text(
                         text = recipe.title,
-                        style = MaterialTheme.typography.headlineMedium,
+                        style = MaterialTheme.typography.headlineMedium.copy(
+                            fontSize = MaterialTheme.typography.headlineMedium.fontSize * uiState.textScale,
+                        ),
                     )
 
                     // Description
                     if (recipe.description.isNotBlank()) {
                         Text(
                             text = recipe.description,
-                            style = MaterialTheme.typography.bodyLarge,
+                            style = bodyLargeScaled,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
@@ -264,7 +294,7 @@ fun DetailScreen(
                                 )
                                 Text(
                                     text = stringResource(R.string.label_prep, formatTime(prep)),
-                                    style = MaterialTheme.typography.bodyMedium,
+                                    style = bodyMediumScaled,
                                 )
                             }
                         }
@@ -281,7 +311,7 @@ fun DetailScreen(
                                 )
                                 Text(
                                     text = stringResource(R.string.label_cook, formatTime(cook)),
-                                    style = MaterialTheme.typography.bodyMedium,
+                                    style = bodyMediumScaled,
                                 )
                             }
                         }
@@ -361,6 +391,7 @@ fun DetailScreen(
                             originalServings = recipe.servings,
                             currentServings = uiState.currentServings,
                             unitSystem = uiState.unitSystem,
+                            textScale = uiState.textScale,
                             addedIngredientKeys = uiState.addedIngredientKeys,
                             onAddIngredient = viewModel::onAddIngredientToShoppingList,
                         )
@@ -401,20 +432,22 @@ fun DetailScreen(
                                 ) {
                                     Text(
                                         text = "${index + 1}.",
-                                        style = MaterialTheme.typography.bodyLarge,
+                                        style = bodyLargeScaled,
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.padding(end = 12.dp),
                                     )
                                     Text(
-                                        text = IngredientConversion.convertInstructionText(
-                                            text = step,
-                                            targetSystem = uiState.unitSystem,
-                                            sourceSystem = instructionTempSourceSystem,
-                                            originalServings = recipe.servings,
-                                            desiredServings = uiState.currentServings,
+                                        text = stripLeadingStepNumber(
+                                            IngredientConversion.convertInstructionText(
+                                                text = step,
+                                                targetSystem = uiState.unitSystem,
+                                                sourceSystem = instructionTempSourceSystem,
+                                                originalServings = recipe.servings,
+                                                desiredServings = uiState.currentServings,
+                                            )
                                         ),
-                                        style = MaterialTheme.typography.bodyLarge,
+                                        style = bodyLargeScaled,
                                     )
                                 }
                             }
@@ -623,4 +656,11 @@ private fun formatTime(minutes: Int): String {
         minutes % 60 == 0 -> "${minutes / 60}h"
         else -> "${minutes / 60}h ${minutes % 60}min"
     }
+}
+
+private fun stripLeadingStepNumber(text: String): String {
+    return text
+        .replace(Regex("""^\s*(?:step|étape|etape|paso)\s*\d+\s*[:.)-]?\s*""", RegexOption.IGNORE_CASE), "")
+        .replace(Regex("""^\s*\d+\s*[:.)-]\s*"""), "")
+        .trim()
 }

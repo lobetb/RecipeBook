@@ -196,6 +196,10 @@ class ImportViewModel @Inject constructor(
     }
 
     private fun parseGenericRecipeWithAmpFallback(url: String): RecipeParser.ParseResult {
+        if (isFacebookUrl(url)) {
+            return parseFacebookRecipe(url)
+        }
+
         var mobileHtml: String? = null
         var bestRecipe: Recipe? = null
         var bestError: String? = null
@@ -310,6 +314,137 @@ class ImportViewModel @Inject constructor(
         } catch (_: Exception) {
             RecipeParser.ParseResult(recipe = null)
         }
+    }
+
+    private fun parseFacebookRecipe(url: String): RecipeParser.ParseResult {
+        return try {
+            val mobileHtml = fetchHtml(url, useDesktopUserAgent = false)
+            val desktopHtml = fetchHtml(url, useDesktopUserAgent = true)
+
+            val mobileStructured = RecipeParser.parseHtml(mobileHtml, url).recipe
+            val desktopStructured = RecipeParser.parseHtml(desktopHtml, url).recipe
+            var bestRecipe = mergeRecipeCandidates(desktopStructured, mobileStructured)
+
+            val mobileDoc = Jsoup.parse(mobileHtml)
+            val desktopDoc = Jsoup.parse(desktopHtml)
+
+            val candidates = buildFacebookDescriptionCandidates(mobileDoc, mobileHtml) +
+                buildFacebookDescriptionCandidates(desktopDoc, desktopHtml)
+
+            val bestTextRecipe = candidates
+                .asSequence()
+                .distinct()
+                .map { cleanFacebookDescriptionCandidate(it) }
+                .filter { it.length >= 30 }
+                .map { normalizeRecipeLikeText(it) }
+                .mapNotNull { candidate -> RecipeParser.parseTextRecipe(candidate, url).recipe }
+                .maxByOrNull { recipe ->
+                    recipe.instructions.size * 120 + recipe.ingredients.size * 30 +
+                        if (recipe.description.contains("ingredients", ignoreCase = true)) 10 else 0
+                }
+
+            bestRecipe = mergeRecipeCandidates(bestRecipe, bestTextRecipe)
+
+            if (bestRecipe != null) {
+                RecipeParser.ParseResult(recipe = bestRecipe)
+            } else {
+                val textFallback = tryParseViaTextMirror(url)
+                if (textFallback.recipe != null || !textFallback.error.isNullOrBlank()) {
+                    textFallback
+                } else {
+                    RecipeParser.ParseResult(recipe = null, error = context.getString(R.string.error_extract_recipe))
+                }
+            }
+        } catch (e: Exception) {
+            val friendly = if (e is HttpStatusException && e.statusCode == 403) {
+                context.getString(R.string.error_site_forbidden)
+            } else {
+                context.getString(R.string.error_fetch_page, e.message ?: e.javaClass.simpleName)
+            }
+            RecipeParser.ParseResult(recipe = null, error = friendly)
+        }
+    }
+
+    private fun buildFacebookDescriptionCandidates(doc: org.jsoup.nodes.Document, html: String): List<String> {
+        return buildList {
+            addAll(
+                listOfNotNull(
+                    doc.selectFirst("meta[property=og:description]")?.attr("content"),
+                    doc.selectFirst("meta[name=description]")?.attr("content"),
+                    doc.selectFirst("meta[property=og:title]")?.attr("content"),
+                )
+            )
+            addAll(extractFacebookScriptTextCandidates(html))
+            addAll(extractParagraphFromEmbeddedHtml(html))
+        }
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+    }
+
+    private fun extractFacebookScriptTextCandidates(html: String): List<String> {
+        val patterns = listOf(
+            Regex("""\"message\"\s*:\s*\{[^{}]*\"text\"\s*:\s*\"(.*?)\"""", RegexOption.DOT_MATCHES_ALL),
+            Regex("""\"text\"\s*:\s*\"(.*?)\"\s*,\s*\"delight_ranges\"""", RegexOption.DOT_MATCHES_ALL),
+            Regex("""\"description\"\s*:\s*\"(.*?)\"""", RegexOption.DOT_MATCHES_ALL),
+        )
+
+        return patterns
+            .flatMap { pattern -> pattern.findAll(html).map { it.groupValues[1] }.toList() }
+            .map { decodeEscapedText(it) }
+            .filter { it.length >= 30 }
+    }
+
+    private fun decodeEscapedText(raw: String): String {
+        return raw
+            .replace("\\n", "\n")
+            .replace("\\r", "\n")
+            .replace("\\/", "/")
+            .replace("\\\"", "\"")
+            .replace(Regex("\\\\u([0-9a-fA-F]{4})")) { m ->
+                m.groupValues[1].toInt(16).toChar().toString()
+            }
+            .replace(Regex("\\s+"), " ")
+            .trim()
+    }
+
+    private fun cleanFacebookDescriptionCandidate(candidate: String): String {
+        var text = candidate.trim()
+            .trim('"', '“', '”')
+
+        val noisePatterns = listOf(
+            Regex("""\b\d+[\d.,]*\s*(likes?|reactions?|comments?|shares?)\b""", RegexOption.IGNORE_CASE),
+            Regex("""\b(see more|see less|all reactions|most relevant|like|comment|share)\b""", RegexOption.IGNORE_CASE),
+            Regex("""\b(hours?|days?|weeks?)\s+ago\b""", RegexOption.IGNORE_CASE),
+        )
+
+        noisePatterns.forEach { pattern ->
+            text = text.replace(pattern, " ")
+        }
+
+        return text.replace(Regex("\\s+"), " ").trim()
+    }
+
+    private fun normalizeRecipeLikeText(text: String): String {
+        var normalized = text
+            .replace(Regex("""\s*[•●▪◦·]\s*"""), "\n- ")
+            .replace(Regex("""\s+\|\s+"""), "\n")
+
+        val markers = listOf(
+            "ingredients", "ingredient", "ingrédients", "ingredientes",
+            "instructions", "directions", "method", "steps", "preparation", "préparation", "instrucciones", "pasos",
+        )
+        markers.forEach { marker ->
+            normalized = normalized.replace(
+                Regex("""(?i)(?<!\n)\b${Regex.escape(marker)}\b\s*:?"""),
+                "\n$marker:\n",
+            )
+        }
+
+        return normalized
+            .replace(Regex("""\s*#\w+"""), "")
+            .replace(Regex("""\s+"""), " ")
+            .replace(Regex("""\n\s+"""), "\n")
+            .trim()
     }
 
     private fun appendQueryParam(url: String, param: String): String {
@@ -527,6 +662,10 @@ class ImportViewModel @Inject constructor(
 
     private fun isTikTokUrl(url: String): Boolean {
         return url.contains("tiktok.com", ignoreCase = true)
+    }
+
+    private fun isFacebookUrl(url: String): Boolean {
+        return url.contains("facebook.com", ignoreCase = true) || url.contains("fb.watch", ignoreCase = true)
     }
 
     private fun expandShortUrl(urlString: String): String {
