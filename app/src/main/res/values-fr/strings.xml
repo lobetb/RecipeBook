@@ -120,6 +120,7 @@
     <string name="settings_language_description">Choisissez la langue de l\'application.</string>
     <string name="settings_english">Anglais</string>
     <string name="settings_french">Français</string>
+    <string name="settings_spanish">Espagnol</string>
     <string name="settings_backup">Sauvegarde</string>
     <string name="settings_backup_description">Créez une sauvegarde ZIP de la base locale et enregistrez-la dans Google Drive ou localement.</string>
     <string name="report_bug">Signaler un bug</string>

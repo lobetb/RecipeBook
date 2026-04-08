@@ -120,6 +120,7 @@
     <string name="settings_language_description">Choose the app language.</string>
     <string name="settings_english">English</string>
     <string name="settings_french">French</string>
+    <string name="settings_spanish">Spanish</string>
     <string name="settings_backup">Backup</string>
     <string name="settings_backup_description">Create a ZIP backup of your local database (including WAL data) and save it to Google Drive (or any document provider).</string>
     <string name="report_bug">Report a bug</string>

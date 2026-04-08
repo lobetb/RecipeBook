@@ -46,6 +46,7 @@ import com.blobet.recipebook.R
 
 private const val LANGUAGE_EN = "en"
 private const val LANGUAGE_FR = "fr"
+private const val LANGUAGE_ES = "es"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -173,6 +174,15 @@ fun SettingsScreen(
                         AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(LANGUAGE_FR))
                     },
                     label = { Text(stringResource(R.string.settings_french)) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
+                FilterChip(
+                    selected = currentTag == LANGUAGE_ES,
+                    onClick = {
+                        AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(LANGUAGE_ES))
+                    },
+                    label = { Text(stringResource(R.string.settings_spanish)) },
                     modifier = Modifier.fillMaxWidth(),
                 )
 

@@ -23,12 +23,14 @@ object RecipeParser {
 
     private val ingredientHeadings = listOf(
         "ingredients", "ingredient", "what you need", "shopping list",
-        "ingrédients", "ingredients", "ce qu'il faut", "ce quil faut"
+        "ingrédients", "ingredients", "ce qu'il faut", "ce quil faut",
+        "ingredientes", "lo que necesitas"
     )
 
     private val instructionHeadings = listOf(
         "instructions", "directions", "method", "steps", "preparation",
-        "préparation", "preparation", "méthode", "methode", "étapes", "etapes", "etape"
+        "préparation", "preparation", "méthode", "methode", "étapes", "etapes", "etape",
+        "instrucciones", "pasos", "preparacion", "método", "metodo"
     )
 
     private val quantityUnitRegex = Regex(
@@ -38,12 +40,12 @@ object RecipeParser {
 
     private const val heuristicConfidenceThreshold = 0.55f
     private val textStepVerbRegex = Regex(
-        """\b(mix|stir|bake|cook|add|heat|serve|boil|preheat|pour|grill|fry|melt|whisk|combine|blend|chop|slice|cuire|ajouter|ajoutez|melanger|mélanger|mélangez|chauffer|servir|faire\s+bouillir|prechauffer|préchauffer|faites|laissez|couvrez|versez)\b""",
+        """\b(mix|stir|bake|cook|add|heat|serve|boil|preheat|pour|grill|fry|melt|whisk|combine|blend|chop|slice|cuire|ajouter|ajoutez|melanger|mélanger|mélangez|chauffer|servir|faire\s+bouillir|prechauffer|préchauffer|faites|laissez|couvrez|versez|mezclar|cocinar|anadir|añadir|calentar|hervir|precalentar|verter|cubrir|escurrir|servir|freir|freír|hornear|batir|picar|cortar)\b""",
         RegexOption.IGNORE_CASE,
     )
 
     private val inlineIngredientRegex = Regex(
-        """(\d+[\d\s/.,-]*\s*(g|kg|mg|ml|l|cl|cup|cups|tbsp|tsp|oz|lb|pinch|cloves?|slice|slices|onions?|garlic\s+cloves?|c\.?\s?a\.?\s?s\.?|c\.?\s?a\.?\s?c\.?)\s+[^\d\n#]{2,60})""",
+        """(\d+[\d\s/.,-]*\s*(g|kg|mg|ml|l|cl|cup|cups|tbsp|tsp|oz|lb|pinch|cloves?|slice|slices|onions?|garlic\s+cloves?|dientes?\s+de\s+ajo|c\.?\s?a\.?\s?s\.?|c\.?\s?a\.?\s?c\.?|cda|cdas|cdta|cdita)\s+[^\d\n#]{2,60})""",
         RegexOption.IGNORE_CASE,
     )
 
@@ -286,6 +288,8 @@ object RecipeParser {
             "place", "pour", "cover", "drain", "grill", "let", "sprinkle",
             "melanger", "cuire", "ajouter", "chauffer", "servir", "faire bouillir",
             "prechauffer", "verser", "couvrir", "egoutter", "laisser", "saupoudrer", "mijoter",
+            "mezclar", "cocinar", "anadir", "añadir", "calentar", "hervir", "precalentar",
+            "verter", "cubrir", "escurrir", "freir", "freír", "hornear", "batir", "picar", "cortar",
         ).any { cue -> lower.contains(cue) }
     }
 
@@ -304,7 +308,7 @@ object RecipeParser {
         }
         if (line.length < 8 || line.length > 800) return false
         val hasStepPrefix = Regex(
-            """^(step\s*\d+|etape\s*\d+|étape\s*\d+|\d+\s*[-).])""",
+            """^(step\s*\d+|etape\s*\d+|étape\s*\d+|paso\s*\d+|\d+\s*[-).])""",
             RegexOption.IGNORE_CASE,
         ).containsMatchIn(line)
         return hasStepPrefix || textStepVerbRegex.containsMatchIn(line)
@@ -317,6 +321,9 @@ object RecipeParser {
             lower.startsWith("directions") ||
             lower.startsWith("method") ||
             lower.startsWith("preparation") ||
+            lower.startsWith("preparacion") ||
+            lower.startsWith("instrucciones") ||
+            lower.startsWith("pasos") ||
             lower.startsWith("etapes") ||
             lower.startsWith("etape")
     }
@@ -811,7 +818,7 @@ object RecipeParser {
             .map { cleanHtml(it.text()) }
             .flatMap { splitInstructionChunk(it) }
             .map { it.trim() }
-            .filter { Regex("""^(étape|etape|step)\s*\d+|^\d+\s*[-).]""", RegexOption.IGNORE_CASE).containsMatchIn(it) }
+            .filter { Regex("""^(étape|etape|step|paso)\s*\d+|^\d+\s*[-).]""", RegexOption.IGNORE_CASE).containsMatchIn(it) }
             .filter { looksLikeInstruction(it) }
         if (stepParagraphs.size >= 2) return stepParagraphs.take(40)
 
@@ -918,7 +925,7 @@ object RecipeParser {
         if (lines.size >= 6) return true
 
         val numberedCount = lines.count {
-            Regex("""^(\d+\s*[.)-]|étape\s*\d+|etape\s*\d+|step\s*\d+)""", RegexOption.IGNORE_CASE)
+            Regex("""^(\d+\s*[.)-]|étape\s*\d+|etape\s*\d+|step\s*\d+|paso\s*\d+)""", RegexOption.IGNORE_CASE)
                 .containsMatchIn(it)
         }
         val instructionLikeCount = lines.count { looksLikeInstruction(it) }
@@ -929,7 +936,7 @@ object RecipeParser {
     private fun splitInstructionChunk(text: String): List<String> {
         val trimmed = text.trim()
         val stepPrefixRegex = Regex(
-            """(?:^|\s)(step\s*\d+|etape\s*\d+|étape\s*\d+|\d+\s*[-).])""",
+            """(?:^|\s)(step\s*\d+|etape\s*\d+|étape\s*\d+|paso\s*\d+|\d+\s*[-).])""",
             RegexOption.IGNORE_CASE,
         )
         val stepPrefixCount = stepPrefixRegex.findAll(trimmed).count()
@@ -969,10 +976,12 @@ object RecipeParser {
             "mix", "stir", "bake", "cook", "add", "heat", "serve", "boil", "preheat",
             "place", "pour", "cover", "drain", "grill", "let",
             "mélanger", "melanger", "cuire", "ajouter", "chauffer", "servir", "faire bouillir",
-            "préchauffer", "prechauffer", "verser", "couvrir", "égoutter", "egoutter", "laisser"
+            "préchauffer", "prechauffer", "verser", "couvrir", "égoutter", "egoutter", "laisser",
+            "mezclar", "cocinar", "anadir", "añadir", "calentar", "hervir", "precalentar",
+            "verter", "cubrir", "escurrir", "servir", "freir", "freír", "hornear", "batir", "picar", "cortar"
         ).any { cue -> lower.contains(cue) }
         val hasStepPrefix = Regex(
-            """^(step\s*\d+|etape\s*\d+|étape\s*\d+|\d+\s*[-).])""",
+            """^(step\s*\d+|etape\s*\d+|étape\s*\d+|paso\s*\d+|\d+\s*[-).])""",
             RegexOption.IGNORE_CASE,
         ).containsMatchIn(text)
         return hasVerbCue || hasStepPrefix
@@ -1106,7 +1115,7 @@ object RecipeParser {
     }
 
     private fun extractServingsFromText(text: String): Int? {
-        val match = Regex("""(serves?|yield|portions?)\s*[:\-]?\s*(\d+)""", RegexOption.IGNORE_CASE)
+        val match = Regex("""(serves?|yield|portions?|raciones?)\s*[:\-]?\s*(\d+)""", RegexOption.IGNORE_CASE)
             .find(text)
         return match?.groupValues?.getOrNull(2)?.toIntOrNull()
     }

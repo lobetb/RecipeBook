@@ -68,6 +68,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.blobet.recipebook.R
+import com.blobet.recipebook.domain.model.IngredientConversion
 import com.blobet.recipebook.ui.components.IngredientList
 import com.blobet.recipebook.ui.components.ServingScaler
 import com.blobet.recipebook.ui.components.TagChips
@@ -369,6 +370,12 @@ fun DetailScreen(
 
                     // Instructions
                     if (recipe.instructions.isNotEmpty()) {
+                        val sourceSystem = IngredientConversion.inferSourceUnitSystem(recipe.ingredients)
+                        val instructionTempSourceSystem = IngredientConversion.inferInstructionTemperatureSource(
+                            instructions = recipe.instructions,
+                            ingredientSourceSystem = sourceSystem,
+                        )
+
                         Text(
                             text = stringResource(R.string.instructions),
                             style = MaterialTheme.typography.titleLarge,
@@ -400,7 +407,13 @@ fun DetailScreen(
                                         modifier = Modifier.padding(end = 12.dp),
                                     )
                                     Text(
-                                        text = step,
+                                        text = IngredientConversion.convertInstructionText(
+                                            text = step,
+                                            targetSystem = uiState.unitSystem,
+                                            sourceSystem = instructionTempSourceSystem,
+                                            originalServings = recipe.servings,
+                                            desiredServings = uiState.currentServings,
+                                        ),
                                         style = MaterialTheme.typography.bodyLarge,
                                     )
                                 }

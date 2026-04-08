@@ -21,6 +21,15 @@ object IngredientParser {
         "bunch", "bunches", "sprig", "sprigs",
         "can", "cans", "jar", "jars", "package", "packages",
         "stick", "sticks", "bag", "bags",
+        // Spanish
+        "cda", "cdas", "cdta", "cdita", "cditas",
+        "cucharada", "cucharadas", "cucharadita", "cucharaditas",
+        "onza", "onzas", "libra", "libras",
+        "gramo", "gramos", "kilogramo", "kilogramos",
+        "litro", "litros", "mililitro", "mililitros",
+        "pizca", "pizcas", "rebanada", "rebanadas",
+        "diente", "dientes", "rama", "ramas",
+        "lata", "latas", "frasco", "frascos", "paquete", "paquetes",
     )
 
     // Matches fractions like "1/2", "3/4"
@@ -29,8 +38,10 @@ object IngredientParser {
     // Matches mixed numbers like "1 1/2" or simple numbers like "2" or "2.5"
     private val QUANTITY_REGEX = Regex("""^(\d+\s+\d+\s*/\s*\d+|\d+\s*/\s*\d+|\d+\.?\d*)\s*""")
 
+    private val leadingNoiseRegex = Regex("""^\s*[-•●▪◦·*]+\s*""")
+
     fun parse(raw: String, index: Int = 0): Ingredient {
-        val trimmed = raw.trim()
+        val trimmed = normalizeIngredientRaw(raw).trim()
         if (trimmed.isBlank()) {
             return Ingredient(name = "", orderIndex = index)
         }
@@ -53,8 +64,10 @@ object IngredientParser {
             remaining = remaining.split(Regex("\\s+"), limit = 2).getOrNull(1)?.trim() ?: ""
         }
 
-        // Handle "of" prefix (e.g., "2 cups of flour" -> name = "flour")
+        // Handle "of" / "de" prefix (e.g., "2 cups of flour" -> name = "flour")
         if (remaining.startsWith("of ", ignoreCase = true)) {
+            remaining = remaining.substring(3).trim()
+        } else if (remaining.startsWith("de ", ignoreCase = true)) {
             remaining = remaining.substring(3).trim()
         }
 
@@ -64,6 +77,32 @@ object IngredientParser {
             unit = unit,
             orderIndex = index,
         )
+    }
+
+    private fun normalizeIngredientRaw(raw: String): String {
+        var text = raw.trim()
+        text = text.replace(leadingNoiseRegex, "")
+        text = text.replace('⁄', '/')
+
+        // Convert common unicode fractions to ascii fractions for parser consistency.
+        val unicodeFractions = listOf(
+            "½" to "1/2",
+            "¼" to "1/4",
+            "¾" to "3/4",
+            "⅓" to "1/3",
+            "⅔" to "2/3",
+            "⅛" to "1/8",
+            "⅜" to "3/8",
+            "⅝" to "5/8",
+            "⅞" to "7/8",
+        )
+
+        unicodeFractions.forEach { (symbol, fraction) ->
+            text = text.replace(Regex("""(?<=\d)$symbol"""), " $fraction")
+            text = text.replace(symbol, fraction)
+        }
+
+        return text
     }
 
     private fun parseQuantity(raw: String): Double? {

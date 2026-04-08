@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Recipe Book</string>
+    <string name="home_title">Recipe Book</string>
+    <string name="home_toggle_favorites">Mostrar favoritos</string>
+    <string name="home_filter_recipes">Filtrar recetas</string>
+    <string name="home_sort_recipes">Ordenar recetas</string>
+    <string name="home_layout_options">Opciones de vista</string>
+    <string name="more_actions">Más acciones</string>
+    <string name="keep_screen_on_enable">Activar mantener pantalla encendida</string>
+    <string name="keep_screen_on_disable">Desactivar mantener pantalla encendida</string>
+    <string name="home_settings">Ajustes</string>
+    <string name="home_shopping_list">Lista de compras</string>
+    <string name="home_import_from_url">Importar desde URL</string>
+    <string name="home_import_recipebook_file">Abrir archivo .recipebook</string>
+    <string name="home_create_manually">Crear manualmente</string>
+    <string name="home_add_recipe">Añadir receta</string>
+    <string name="home_no_recipes_found">No se encontraron recetas</string>
+    <string name="home_no_recipes_yet">Aún no hay recetas</string>
+    <string name="home_add_first_recipe">Pulsa + para añadir tu primera receta</string>
+    <string name="home_adjust_filters">Prueba a ajustar tus filtros</string>
+
+    <string name="search_placeholder">Buscar recetas...</string>
+    <string name="search">Buscar</string>
+    <string name="clear_search">Borrar búsqueda</string>
+
+    <string name="type_breakfast">Desayuno</string>
+    <string name="type_lunch">Almuerzo</string>
+    <string name="type_dinner">Cena</string>
+    <string name="type_dessert">Postre</string>
+    <string name="type_snack">Tentempié</string>
+    <string name="type_soup">Sopa</string>
+    <string name="type_salad">Ensalada</string>
+    <string name="type_side">Acompañamiento</string>
+    <string name="type_drink">Bebida</string>
+
+    <string name="sort_alpha_asc">A a Z</string>
+    <string name="sort_alpha_desc">Z a A</string>
+    <string name="sort_newest_first">Más recientes primero</string>
+    <string name="sort_oldest_first">Más antiguas primero</string>
+
+    <string name="layout_large">Grande</string>
+    <string name="layout_small">Pequeño</string>
+    <string name="layout_list">Lista</string>
+
+    <string name="import_title">Importar receta</string>
+    <string name="back">Atrás</string>
+    <string name="import_paste_url">Pega una URL de receta</string>
+    <string name="import_url_placeholder">https://www.ejemplo.com/receta/...</string>
+    <string name="import_optional_description_label">Texto descriptivo opcional</string>
+    <string name="import_optional_description_placeholder">Si la importación por URL no detecta pasos, pega aquí la descripción completa y vuelve a extraer.</string>
+    <string name="import_paste_clipboard">Pegar desde portapapeles</string>
+    <string name="import_fetching">Obteniendo receta...</string>
+    <string name="import_extract_recipe">Extraer receta</string>
+    <string name="import_preview">Vista previa de la receta</string>
+    <string name="import_partial_recipe_missing_ingredients">Importación parcial: faltan los ingredientes (esta página puede ocultarlos tras un muro de pago).</string>
+    <string name="import_partial_recipe_missing_instructions">Importación parcial: faltan las instrucciones (esta página puede ocultarlas tras un muro de pago).</string>
+    <string name="label_prep">Preparación: %1$s</string>
+    <string name="label_cook">Cocción: %1$s</string>
+    <string name="label_servings">Raciones: %1$d</string>
+    <string name="label_ingredients_count">Ingredientes (%1$d)</string>
+    <string name="label_and_more">... y %1$d más</string>
+    <string name="label_instructions_count">Instrucciones (%1$d pasos)</string>
+    <string name="save_recipe">Guardar receta</string>
+
+    <string name="detail_toggle_favorite">Alternar favorito</string>
+    <string name="share">Compartir</string>
+    <string name="share_recipe_url">Compartir URL de la receta</string>
+    <string name="share_recipe_file">Compartir archivo de receta</string>
+    <string name="share_option_full_text">Compartir texto completo de la receta</string>
+    <string name="share_option_url_only">Compartir solo URL de origen</string>
+    <string name="share_option_recipe_file">Compartir como archivo Recipe Book</string>
+    <string name="share_url_missing">No hay URL de origen disponible para esta receta.</string>
+    <string name="share_file_failed">No se pudo crear el archivo de receta.</string>
+    <string name="edit">Editar</string>
+    <string name="delete">Eliminar</string>
+    <string name="add_to_favorites">Añadir a favoritos</string>
+    <string name="remove_from_favorites">Quitar de favoritos</string>
+    <string name="add_to_shopping_list">Añadir a la lista de compras</string>
+    <string name="recipe_not_found">Receta no encontrada</string>
+    <string name="view_original_recipe">Ver receta original</string>
+    <string name="ingredients">Ingredientes</string>
+    <string name="instructions">Instrucciones</string>
+    <string name="delete_recipe_title">Eliminar receta</string>
+    <string name="delete_recipe_confirmation">¿Seguro que quieres eliminar esta receta? Esta acción no se puede deshacer.</string>
+    <string name="cancel">Cancelar</string>
+
+    <string name="servings">Raciones</string>
+    <string name="units_original">Original</string>
+    <string name="units_metric">Métrico</string>
+    <string name="units_imperial">Imperial</string>
+    <string name="decrease_servings">Disminuir raciones</string>
+    <string name="increase_servings">Aumentar raciones</string>
+    <string name="servings_original">(originalmente %1$d)</string>
+
+    <string name="edit_recipe_title">Editar receta</string>
+    <string name="new_recipe_title">Nueva receta</string>
+    <string name="save_recipe_cd">Guardar receta</string>
+    <string name="recipe_photo">Foto de la receta</string>
+    <string name="tap_to_add_photo">Pulsa para añadir foto</string>
+    <string name="field_title_required">Título *</string>
+    <string name="field_description">Descripción</string>
+    <string name="field_prep_minutes">Preparación (min)</string>
+    <string name="field_cook_minutes">Cocción (min)</string>
+    <string name="field_servings">Raciones</string>
+    <string name="field_source_url_optional">URL de origen (opcional)</string>
+    <string name="ingredient_example">p. ej., 2 tazas de harina</string>
+    <string name="remove_ingredient">Eliminar ingrediente</string>
+    <string name="add_ingredient">Añadir ingrediente</string>
+    <string name="instruction_step">Paso %1$d</string>
+    <string name="remove_step">Eliminar paso</string>
+    <string name="add_step">Añadir paso</string>
+    <string name="tags">Etiquetas</string>
+    <string name="new_tag">Nueva etiqueta</string>
+    <string name="tag_name">Nombre de la etiqueta</string>
+    <string name="add">Añadir</string>
+
+    <string name="settings_title">Ajustes</string>
+    <string name="settings_language">Idioma</string>
+    <string name="settings_language_description">Elige el idioma de la aplicación.</string>
+    <string name="settings_english">Inglés</string>
+    <string name="settings_french">Francés</string>
+    <string name="settings_spanish">Español</string>
+    <string name="settings_backup">Copia de seguridad</string>
+    <string name="settings_backup_description">Crea una copia ZIP de la base de datos local (incluyendo WAL) y guárdala en Google Drive (o cualquier proveedor de documentos).</string>
+    <string name="report_bug">Reportar un error</string>
+    <string name="report_bug_subject">Reporte de error de Recipe Book</string>
+    <string name="report_bug_body_template">Describe el problema:
+
+Pasos para reproducir:
+1.
+2.
+
+Resultado esperado:
+
+Resultado actual:
+
+---
+Versión app: %1$s (%2$d)
+Android: %3$s
+Dispositivo: %4$s %5$s
+Idioma: %6$s
+</string>
+    <string name="report_bug_no_email_app">No se encontró ninguna app de correo en este dispositivo.</string>
+    <string name="settings_backup_to_drive">Guardar copia en Drive</string>
+    <string name="settings_restore_from_drive">Restaurar base desde Drive</string>
+    <string name="backup_in_progress">Copia en progreso...</string>
+    <string name="backup_success">Copia completada correctamente.</string>
+    <string name="backup_failed">Error en la copia: %1$s</string>
+    <string name="backup_db_not_found">No se encontró el archivo de base de datos local.</string>
+    <string name="backup_cannot_open_destination">No se puede abrir el archivo de destino.</string>
+    <string name="restore_in_progress">Restauración en progreso...</string>
+    <string name="restore_success_restart_required">Restauración completada. Reinicia la app.</string>
+    <string name="restore_failed">Error en la restauración: %1$s</string>
+    <string name="restore_cannot_open_source">No se puede abrir el archivo de copia seleccionado.</string>
+    <string name="restore_missing_db_entry">El archivo de copia no contiene la base de datos principal.</string>
+    <string name="restore_mode_title">Modo de restauración</string>
+    <string name="restore_mode_description">Elige cómo aplicar esta copia de seguridad.</string>
+    <string name="restore_mode_replace">Reemplazar base de datos actual</string>
+    <string name="restore_mode_merge">Fusionar con base de datos actual</string>
+    <string name="restore_merge_success">Fusión completada: %1$d importadas, %2$d duplicadas omitidas.</string>
+    <string name="restart_app_now">Reiniciar app ahora</string>
+    <string name="support_kofi_message">Si quieres, puedes apoyarme en Ko‑Fi</string>
+    <string name="support_kofi_button">Apoyar en Ko‑Fi</string>
+
+    <string name="shopping_list_title">Lista de compras</string>
+    <string name="shopping_list_empty">Tu lista de compras está vacía. Añade ingredientes desde los detalles de recetas.</string>
+    <string name="shopping_list_clear_all">Borrar todo</string>
+    <string name="shopping_list_clear_all_title">Borrar lista de compras</string>
+    <string name="shopping_list_clear_all_message">¿Quitar todos los elementos de tu lista de compras?</string>
+    <string name="shopping_list_name">Ingrediente</string>
+    <string name="shopping_list_quantity">Cantidad</string>
+    <string name="shopping_list_unit">Unidad</string>
+    <string name="shopping_list_checked">Comprado</string>
+    <string name="shopping_list_unchecked">Por comprar</string>
+    <string name="shopping_list_save_item">Guardar elemento</string>
+
+    <string name="error_enter_url">Introduce una URL</string>
+    <string name="error_extract_recipe">No se pudo extraer la receta de esta página.</string>
+    <string name="error_fetch_page">Error al cargar la página: %1$s</string>
+    <string name="error_save">Error al guardar: %1$s</string>
+    <string name="error_no_url_in_shared_content">No se encontró URL en el contenido compartido.</string>
+    <string name="error_tiktok_no_description">No se encontró texto de descripción de TikTok para analizar.</string>
+    <string name="error_tiktok_fetch">Error al cargar la página de TikTok: %1$s</string>
+    <string name="error_site_forbidden">Este sitio bloquea el acceso automatizado (HTTP 403). Abre la página en el navegador y pega el texto de la receta en el campo descriptivo opcional.</string>
+    <string name="error_site_human_verification">Este sitio está protegido por verificación humana/anti-bot. Abre la página en tu navegador, copia el texto de la receta y pégalo en el campo descriptivo opcional.</string>
+    <string name="error_invalid_recipe_file">Archivo de receta compartido no válido.</string>
+    <string name="error_recipe_not_found">Receta no encontrada</string>
+    <string name="error_save_image">Error al guardar imagen: %1$s</string>
+    <string name="error_title_required">El título es obligatorio</string>
+    <string name="duplicate_recipe_title">Posible receta duplicada</string>
+    <string name="duplicate_recipe_message_url">Ya existe una receta con la misma URL de origen: %1$s</string>
+    <string name="duplicate_recipe_message_title">Ya existe una receta con el mismo título: %1$s</string>
+    <string name="duplicate_recipe_import_anyway">Importar de todas formas</string>
+    <string name="duplicate_recipe_cancel">Cancelar importación</string>
+
+    <string name="remove_tag">Quitar %1$s</string>
+    <string name="detail_add_tag">Añadir etiqueta</string>
+    <string name="detail_add_tag_button">Añadir esta etiqueta</string>
+
+    <string name="share_ingredients_header">INGREDIENTES</string>
+    <string name="share_instructions_header">INSTRUCCIONES</string>
+    <string name="share_total_time">Tiempo total: %1$s</string>
+    <string name="share_servings">Raciones: %1$d</string>
+    <string name="share_source">Origen: %1$s</string>
+    <string name="share_recipe">Compartir receta</string>
+    <string name="share_recipe_file_chooser">Compartir archivo Recipe Book</string>
+    <string name="icon_credit_text">Iconos de cocina creados por pmicon - Flaticon (https://www.flaticon.com/free-icons/cuisine)</string>
+</resources>

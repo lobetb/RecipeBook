@@ -84,7 +84,7 @@ private fun IngredientRow(
             )
         }
         Text(
-            text = display.nameText,
+            text = IngredientConversion.convertTemperatureText(display.nameText, unitSystem),
             style = MaterialTheme.typography.bodyMedium,
         )
 
