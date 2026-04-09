@@ -7,6 +7,7 @@ import androidx.room.Room
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.blobet.recipebook.R
+import com.blobet.recipebook.data.backup.AutoBackupManager
 import com.blobet.recipebook.data.local.RecipeDatabase
 import com.blobet.recipebook.data.local.entity.toDomainModel
 import com.blobet.recipebook.data.repository.RecipeRepository
@@ -34,6 +35,8 @@ enum class RestoreMode {
 data class SettingsUiState(
     val isBackingUp: Boolean = false,
     val isRestoring: Boolean = false,
+    val autoBackupEnabled: Boolean = false,
+    val autoBackupHasDirectory: Boolean = false,
     val canRestartApp: Boolean = false,
     val message: String? = null,
 )
@@ -43,9 +46,15 @@ class SettingsViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val database: RecipeDatabase,
     private val recipeRepository: RecipeRepository,
+    private val autoBackupManager: AutoBackupManager,
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(SettingsUiState())
+    private val _uiState = MutableStateFlow(
+        SettingsUiState(
+            autoBackupEnabled = autoBackupManager.isEnabled(),
+            autoBackupHasDirectory = autoBackupManager.hasDirectoryConfigured(),
+        )
+    )
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
     fun backupDatabaseToUri(uri: Uri) {
@@ -140,6 +149,39 @@ class SettingsViewModel @Inject constructor(
 
     fun clearRestartFlag() {
         _uiState.update { it.copy(canRestartApp = false) }
+    }
+
+    fun enableAutoBackup(treeUri: Uri) {
+        try {
+            autoBackupManager.enableWithDirectory(treeUri)
+            _uiState.update {
+                it.copy(
+                    autoBackupEnabled = true,
+                    autoBackupHasDirectory = true,
+                    message = context.getString(R.string.auto_backup_enabled_success),
+                )
+            }
+        } catch (e: Exception) {
+            _uiState.update {
+                it.copy(
+                    autoBackupEnabled = false,
+                    message = context.getString(
+                        R.string.auto_backup_failed,
+                        e.message ?: e.javaClass.simpleName,
+                    ),
+                )
+            }
+        }
+    }
+
+    fun disableAutoBackup() {
+        autoBackupManager.disable()
+        _uiState.update {
+            it.copy(
+                autoBackupEnabled = false,
+                message = context.getString(R.string.auto_backup_disabled),
+            )
+        }
     }
 
     companion object {

@@ -124,6 +124,11 @@
     <string name="settings_spanish">Spanish</string>
     <string name="settings_backup">Backup</string>
     <string name="settings_backup_description">Create a ZIP backup of your local database (including WAL data) and save it to Google Drive (or any document provider).</string>
+    <string name="settings_auto_backup_title">Daily auto-backup</string>
+    <string name="settings_auto_backup_description">Once per day at app open, refreshes a backup in your chosen folder and keeps the previous one.</string>
+    <string name="auto_backup_enabled_success">Auto-backup enabled.</string>
+    <string name="auto_backup_disabled">Auto-backup disabled.</string>
+    <string name="auto_backup_failed">Auto-backup setup failed: %1$s</string>
     <string name="report_bug">Report a bug</string>
     <string name="report_bug_subject">Recipe Book bug report</string>
     <string name="report_bug_body_template">Please describe the issue:\n\nSteps to reproduce:\n1.\n2.\n\nExpected result:\n\nActual result:\n\n---\nApp version: %1$s (%2$d)\nAndroid: %3$s\nDevice: %4$s %5$s\nLanguage: %6$s\n</string>

@@ -124,6 +124,11 @@
     <string name="settings_spanish">Español</string>
     <string name="settings_backup">Copia de seguridad</string>
     <string name="settings_backup_description">Crea una copia ZIP de la base de datos local (incluyendo WAL) y guárdala en Google Drive (o cualquier proveedor de documentos).</string>
+    <string name="settings_auto_backup_title">Copia automática diaria</string>
+    <string name="settings_auto_backup_description">Una vez al día al abrir la app, actualiza una copia en la carpeta elegida y conserva la anterior.</string>
+    <string name="auto_backup_enabled_success">Copia automática activada.</string>
+    <string name="auto_backup_disabled">Copia automática desactivada.</string>
+    <string name="auto_backup_failed">Error al configurar copia automática: %1$s</string>
     <string name="report_bug">Reportar un error</string>
     <string name="report_bug_subject">Reporte de error de Recipe Book</string>
     <string name="report_bug_body_template">Describe el problema:

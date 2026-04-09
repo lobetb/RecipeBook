@@ -124,6 +124,11 @@
     <string name="settings_spanish">Espagnol</string>
     <string name="settings_backup">Sauvegarde</string>
     <string name="settings_backup_description">Créez une sauvegarde ZIP de la base locale et enregistrez-la dans Google Drive ou localement.</string>
+    <string name="settings_auto_backup_title">Sauvegarde auto quotidienne</string>
+    <string name="settings_auto_backup_description">Une fois par jour à l\'ouverture de l\'app, met à jour une sauvegarde dans le dossier choisi et conserve la précédente.</string>
+    <string name="auto_backup_enabled_success">Sauvegarde automatique activée.</string>
+    <string name="auto_backup_disabled">Sauvegarde automatique désactivée.</string>
+    <string name="auto_backup_failed">Échec de configuration de la sauvegarde auto : %1$s</string>
     <string name="report_bug">Signaler un bug</string>
     <string name="report_bug_subject">Signalement de bug Recipe Book</string>
     <string name="report_bug_body_template">Veuillez décrire le problème :\n\nÉtapes pour reproduire :\n1.\n2.\n\nRésultat attendu :\n\nRésultat observé :\n\n---\nVersion app : %1$s (%2$d)\nAndroid : %3$s\nAppareil : %4$s %5$s\nLangue : %6$s\n</string>

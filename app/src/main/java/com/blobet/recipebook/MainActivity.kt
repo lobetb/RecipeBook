@@ -12,13 +12,21 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.appcompat.app.AppCompatActivity
+import com.blobet.recipebook.data.backup.AutoBackupManager
 import com.blobet.recipebook.ui.navigation.NavGraph
 import com.blobet.recipebook.ui.theme.RecipeBookTheme
 import com.blobet.recipebook.util.RecipeShareCodec
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
+    @Inject
+    lateinit var autoBackupManager: AutoBackupManager
+
     private var sharedText by mutableStateOf<String?>(null)
     private var sharedRecipePayloadJson by mutableStateOf<String?>(null)
     private val urlRegex = Regex("""https?://[^\s]+""", RegexOption.IGNORE_CASE)
@@ -26,6 +34,9 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         handleShareIntent(intent)
+        CoroutineScope(Dispatchers.IO).launch {
+            autoBackupManager.runDailyAutoBackupIfNeeded()
+        }
 
         setContent {
             RecipeBookTheme {
