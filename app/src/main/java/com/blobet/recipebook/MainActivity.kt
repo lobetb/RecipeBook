@@ -15,6 +15,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.blobet.recipebook.data.backup.AutoBackupManager
 import com.blobet.recipebook.ui.navigation.NavGraph
 import com.blobet.recipebook.ui.theme.RecipeBookTheme
+import com.blobet.recipebook.ui.tutorial.TutorialPrefs
 import com.blobet.recipebook.util.RecipeShareCodec
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -26,6 +27,9 @@ import javax.inject.Inject
 class MainActivity : AppCompatActivity() {
     @Inject
     lateinit var autoBackupManager: AutoBackupManager
+
+    @Inject
+    lateinit var tutorialPrefs: TutorialPrefs
 
     private var sharedText by mutableStateOf<String?>(null)
     private var sharedRecipePayloadJson by mutableStateOf<String?>(null)
@@ -47,6 +51,7 @@ class MainActivity : AppCompatActivity() {
                     NavGraph(
                         sharedText = sharedText,
                         sharedRecipePayloadJson = sharedRecipePayloadJson,
+                        tutorialPrefs = tutorialPrefs,
                     )
                 }
             }

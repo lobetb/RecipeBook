@@ -197,4 +197,22 @@
     <string name="share_recipe">Share Recipe</string>
     <string name="share_recipe_file_chooser">Share Recipe Book File</string>
     <string name="icon_credit_text">Cuisine icons created by pmicon - Flaticon (https://www.flaticon.com/free-icons/cuisine)</string>
+
+    <string name="tutorial_skip">Skip</string>
+    <string name="tutorial_next">Next</string>
+    <string name="tutorial_done">Start using app</string>
+    <string name="tutorial_page_indicator">%1$d / %2$d</string>
+    <string name="tutorial_page1_title">Welcome to Recipe Book</string>
+    <string name="tutorial_page1_body">Import recipes from URLs, from .recipebook files, or create them manually.</string>
+    <string name="tutorial_page2_title">Scale and convert</string>
+    <string name="tutorial_page2_body">Adjust servings, switch metric/imperial units, and convert temperatures while cooking.</string>
+    <string name="tutorial_page3_title">Organize and shop</string>
+    <string name="tutorial_page3_body">Use tags and favorites, then add ingredients to your shopping list in one tap.</string>
+    <string name="tutorial_page4_title">Protect your data</string>
+    <string name="tutorial_page4_body">Use backup/restore and optional daily auto-backup to keep your recipes safe.</string>
+    <string name="tutorial_overlay_add">Tap the + button to add recipes manually or import them from URL/files.</string>
+    <string name="tutorial_overlay_welcome">Welcome to this app, here is a quick look-around!</string>
+    <string name="tutorial_overlay_shopping">Use the cart button to open your shopping list.</string>
+    <string name="tutorial_overlay_lock">Use this lock icon to keep the screen awake while cooking.</string>
+    <string name="tutorial_overlay_settings">Open this menu for settings, including backups: manual backup/restore and daily auto-backup setup.</string>
 </resources>

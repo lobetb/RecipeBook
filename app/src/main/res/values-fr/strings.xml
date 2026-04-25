@@ -197,4 +197,22 @@
     <string name="share_recipe">Partager la recette</string>
     <string name="share_recipe_file_chooser">Partager le fichier Recipe Book</string>
     <string name="icon_credit_text">Icônes cuisine créées par pmicon - Flaticon (https://www.flaticon.com/free-icons/cuisine)</string>
+
+    <string name="tutorial_skip">Passer</string>
+    <string name="tutorial_next">Suivant</string>
+    <string name="tutorial_done">Commencer</string>
+    <string name="tutorial_page_indicator">%1$d / %2$d</string>
+    <string name="tutorial_page1_title">Bienvenue dans Recipe Book</string>
+    <string name="tutorial_page1_body">Importez des recettes depuis des URLs, des fichiers .recipebook, ou créez-les manuellement.</string>
+    <string name="tutorial_page2_title">Adapter et convertir</string>
+    <string name="tutorial_page2_body">Ajustez les portions, passez en métrique/impérial, et convertissez les températures pendant la cuisine.</string>
+    <string name="tutorial_page3_title">Organiser et faire les courses</string>
+    <string name="tutorial_page3_body">Utilisez les étiquettes et favoris, puis ajoutez les ingrédients à la liste de courses en un tap.</string>
+    <string name="tutorial_page4_title">Protégez vos données</string>
+    <string name="tutorial_page4_body">Utilisez sauvegarde/restauration et la sauvegarde auto quotidienne pour sécuriser vos recettes.</string>
+    <string name="tutorial_overlay_add">Touchez le bouton + pour ajouter des recettes manuellement ou les importer par URL/fichier.</string>
+    <string name="tutorial_overlay_welcome">Bienvenue dans l\'application, voici un petit tour rapide !</string>
+    <string name="tutorial_overlay_shopping">Utilisez l\'icône panier pour ouvrir votre liste de courses.</string>
+    <string name="tutorial_overlay_lock">Utilisez cette icône verrou pour garder l\'écran allumé pendant la cuisine.</string>
+    <string name="tutorial_overlay_settings">Ouvrez ce menu pour les paramètres, notamment les sauvegardes : sauvegarde/restauration manuelle et configuration de la sauvegarde auto quotidienne.</string>
 </resources>

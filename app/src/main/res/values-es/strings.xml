@@ -212,4 +212,22 @@ Idioma: %6$s
     <string name="share_recipe">Compartir receta</string>
     <string name="share_recipe_file_chooser">Compartir archivo Recipe Book</string>
     <string name="icon_credit_text">Iconos de cocina creados por pmicon - Flaticon (https://www.flaticon.com/free-icons/cuisine)</string>
+
+    <string name="tutorial_skip">Omitir</string>
+    <string name="tutorial_next">Siguiente</string>
+    <string name="tutorial_done">Comenzar</string>
+    <string name="tutorial_page_indicator">%1$d / %2$d</string>
+    <string name="tutorial_page1_title">Bienvenido a Recipe Book</string>
+    <string name="tutorial_page1_body">Importa recetas desde URLs, archivos .recipebook o créalas manualmente.</string>
+    <string name="tutorial_page2_title">Escalar y convertir</string>
+    <string name="tutorial_page2_body">Ajusta porciones, cambia entre métrico/imperial y convierte temperaturas mientras cocinas.</string>
+    <string name="tutorial_page3_title">Organiza y compra</string>
+    <string name="tutorial_page3_body">Usa etiquetas y favoritos, y añade ingredientes a la lista de compras con un toque.</string>
+    <string name="tutorial_page4_title">Protege tus datos</string>
+    <string name="tutorial_page4_body">Usa copia/restauración y copia automática diaria para proteger tus recetas.</string>
+    <string name="tutorial_overlay_add">Pulsa el botón + para añadir recetas manualmente o importarlas por URL/archivo.</string>
+    <string name="tutorial_overlay_welcome">¡Bienvenido a la app! Aquí tienes un recorrido rápido.</string>
+    <string name="tutorial_overlay_shopping">Usa el icono del carrito para abrir tu lista de compras.</string>
+    <string name="tutorial_overlay_lock">Usa este icono de bloqueo para mantener la pantalla encendida mientras cocinas.</string>
+    <string name="tutorial_overlay_settings">Abre este menú para ajustes, incluidas las copias de seguridad: copia/restauración manual y configuración de copia automática diaria.</string>
 </resources>

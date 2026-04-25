@@ -4,9 +4,17 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,6 +53,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -66,6 +75,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -86,6 +96,8 @@ fun HomeScreen(
     onImportRecipeFileClick: (String) -> Unit,
     onShoppingListClick: () -> Unit,
     onSettingsClick: () -> Unit,
+    showHandsOnTutorial: Boolean,
+    onHandsOnTutorialDone: () -> Unit,
     isKeepScreenOn: Boolean,
     onToggleKeepScreenOn: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
@@ -96,7 +108,18 @@ fun HomeScreen(
     var showFilters by remember { mutableStateOf(false) }
     var fabExpanded by remember { mutableStateOf(false) }
     var showActionsMenu by remember { mutableStateOf(false) }
+    var tutorialStep by remember { mutableStateOf(-1) }
     val scope = rememberCoroutineScope()
+    val showTutorialOverlay = showHandsOnTutorial && !showActionsMenu && !showFilters
+    val tutorialPulse by rememberInfiniteTransition(label = "tutorialPulse").animateFloat(
+        initialValue = 0.35f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(900, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "tutorialPulseValue",
+    )
 
     val importFileLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
@@ -138,7 +161,15 @@ fun HomeScreen(
                             contentDescription = stringResource(R.string.home_filter_recipes),
                         )
                     }
-                    IconButton(onClick = onShoppingListClick) {
+                    val shoppingMod = if (showTutorialOverlay && tutorialStep == 1) {
+                        Modifier
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.18f * tutorialPulse), CircleShape)
+                            .border(3.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f + (0.55f * tutorialPulse)), CircleShape)
+                    } else Modifier
+                    IconButton(
+                        onClick = onShoppingListClick,
+                        modifier = shoppingMod,
+                    ) {
                         Icon(
                             imageVector = Icons.Default.ShoppingCart,
                             contentDescription = stringResource(R.string.home_shopping_list),
@@ -150,7 +181,12 @@ fun HomeScreen(
                             color = if (isKeepScreenOn) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.Transparent,
                             shape = CircleShape,
                         )
-                    IconButton(onClick = onToggleKeepScreenOn, modifier = keepScreenModifier) {
+                    val lockMod = if (showTutorialOverlay && tutorialStep == 2) {
+                        keepScreenModifier
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.18f * tutorialPulse), CircleShape)
+                            .border(3.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f + (0.55f * tutorialPulse)), CircleShape)
+                    } else keepScreenModifier
+                    IconButton(onClick = onToggleKeepScreenOn, modifier = lockMod) {
                         Icon(
                             imageVector = Icons.Default.ScreenLockPortrait,
                             contentDescription = if (isKeepScreenOn) {
@@ -162,7 +198,12 @@ fun HomeScreen(
                         )
                     }
                     Box {
-                        IconButton(onClick = { showActionsMenu = true }) {
+                        val settingsMod = if (showTutorialOverlay && tutorialStep == 3) {
+                            Modifier
+                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.18f * tutorialPulse), CircleShape)
+                                .border(3.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f + (0.55f * tutorialPulse)), CircleShape)
+                        } else Modifier
+                        IconButton(onClick = { showActionsMenu = true }, modifier = settingsMod) {
                             Icon(
                                 imageVector = Icons.Default.MoreVert,
                                 contentDescription = stringResource(R.string.more_actions),
@@ -291,207 +332,244 @@ fun HomeScreen(
                         )
                     }
                 }
+                val addMod = if (showTutorialOverlay && tutorialStep == 0) {
+                    Modifier
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.22f * tutorialPulse), CircleShape)
+                        .border(4.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f + (0.55f * tutorialPulse)), CircleShape)
+                } else Modifier
                 FloatingActionButton(
                     onClick = { fabExpanded = !fabExpanded },
+                    modifier = addMod,
                 ) {
                     Icon(Icons.Default.Add, contentDescription = stringResource(R.string.home_add_recipe))
                 }
             }
         }
     ) { padding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
         ) {
-            SearchBar(
-                query = uiState.searchQuery,
-                onQueryChange = viewModel::onSearchQueryChange,
-            )
+            Column(modifier = Modifier.fillMaxSize()) {
+                SearchBar(
+                    query = uiState.searchQuery,
+                    onQueryChange = viewModel::onSearchQueryChange,
+                )
 
-            AnimatedVisibility(visible = showFilters) {
-                FlowRow(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    RecipeTypeFilter.entries.forEach { type ->
-                        FilterChip(
-                            selected = type in uiState.selectedRecipeTypes,
-                            onClick = { viewModel.onToggleRecipeType(type) },
-                            label = { Text(stringResource(type.labelRes)) },
-                        )
-                    }
-                }
-            }
-
-            // Tag filter chips
-            AnimatedVisibility(visible = showFilters && uiState.allTags.isNotEmpty()) {
-                FlowRow(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    uiState.allTags.forEach { tag ->
-                        FilterChip(
-                            selected = tag.id in uiState.selectedTagIds,
-                            onClick = { viewModel.onToggleTag(tag.id) },
-                            label = { Text(tag.name) },
-                        )
-                    }
-                }
-            }
-
-            if (uiState.recipes.isEmpty() && !uiState.isLoading) {
-                // Empty state
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(32.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
+                AnimatedVisibility(visible = showFilters) {
+                    FlowRow(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.MenuBook,
-                            contentDescription = null,
-                            modifier = Modifier.size(80.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = if (
-                                uiState.searchQuery.isNotBlank() ||
-                                uiState.selectedTagIds.isNotEmpty() ||
-                                uiState.selectedRecipeTypes.isNotEmpty() ||
-                                uiState.showFavoritesOnly
-                            ) {
-                                stringResource(R.string.home_no_recipes_found)
-                            } else {
-                                stringResource(R.string.home_no_recipes_yet)
-                            },
-                            style = MaterialTheme.typography.headlineSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = if (
-                                uiState.searchQuery.isBlank() &&
-                                uiState.selectedTagIds.isEmpty() &&
-                                uiState.selectedRecipeTypes.isEmpty() &&
-                                !uiState.showFavoritesOnly
-                            ) {
-                                stringResource(R.string.home_add_first_recipe)
-                            } else {
-                                stringResource(R.string.home_adjust_filters)
-                            },
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                        )
+                        RecipeTypeFilter.entries.forEach { type ->
+                            FilterChip(
+                                selected = type in uiState.selectedRecipeTypes,
+                                onClick = { viewModel.onToggleRecipeType(type) },
+                                label = { Text(stringResource(type.labelRes)) },
+                            )
+                        }
                     }
                 }
-            } else {
-                when (uiState.layoutMode) {
-                    LayoutMode.LARGE -> {
-                        LazyColumn(
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            lazyItems(
-                                items = uiState.recipes,
-                                key = { it.id }
-                            ) { recipe ->
-                                RecipeCard(
-                                    recipe = recipe,
-                                    onClick = { onRecipeClick(recipe.id) },
-                                    onFavoriteClick = {
-                                        viewModel.onToggleRecipeFavorite(recipe.id, recipe.isFavorite)
-                                    },
-                                )
-                            }
-                            item { Spacer(modifier = Modifier.height(80.dp)) }
+
+                AnimatedVisibility(visible = showFilters && uiState.allTags.isNotEmpty()) {
+                    FlowRow(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        uiState.allTags.forEach { tag ->
+                            FilterChip(
+                                selected = tag.id in uiState.selectedTagIds,
+                                onClick = { viewModel.onToggleTag(tag.id) },
+                                label = { Text(tag.name) },
+                            )
                         }
                     }
+                }
 
-                    LayoutMode.SMALL -> {
-                        LazyVerticalGrid(
-                            columns = GridCells.Fixed(2),
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            gridItems(
-                                items = uiState.recipes,
-                                key = { it.id }
-                            ) { recipe ->
-                                RecipeCard(
-                                    recipe = recipe,
-                                    onClick = { onRecipeClick(recipe.id) },
-                                    onFavoriteClick = {
-                                        viewModel.onToggleRecipeFavorite(recipe.id, recipe.isFavorite)
-                                    },
-                                )
-                            }
-                            item(span = { GridItemSpan(2) }) {
-                                Spacer(modifier = Modifier.height(80.dp))
-                            }
+                if (uiState.recipes.isEmpty() && !uiState.isLoading) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(32.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                imageVector = Icons.Default.MenuBook,
+                                contentDescription = null,
+                                modifier = Modifier.size(80.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = if (
+                                    uiState.searchQuery.isNotBlank() ||
+                                    uiState.selectedTagIds.isNotEmpty() ||
+                                    uiState.selectedRecipeTypes.isNotEmpty() ||
+                                    uiState.showFavoritesOnly
+                                ) stringResource(R.string.home_no_recipes_found)
+                                else stringResource(R.string.home_no_recipes_yet),
+                                style = MaterialTheme.typography.headlineSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = if (
+                                    uiState.searchQuery.isBlank() &&
+                                    uiState.selectedTagIds.isEmpty() &&
+                                    uiState.selectedRecipeTypes.isEmpty() &&
+                                    !uiState.showFavoritesOnly
+                                ) stringResource(R.string.home_add_first_recipe)
+                                else stringResource(R.string.home_adjust_filters),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                            )
                         }
                     }
+                } else {
+                    when (uiState.layoutMode) {
+                        LayoutMode.LARGE -> {
+                            LazyColumn(
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                lazyItems(items = uiState.recipes, key = { it.id }) { recipe ->
+                                    RecipeCard(
+                                        recipe = recipe,
+                                        onClick = { onRecipeClick(recipe.id) },
+                                        onFavoriteClick = {
+                                            viewModel.onToggleRecipeFavorite(recipe.id, recipe.isFavorite)
+                                        },
+                                    )
+                                }
+                                item { Spacer(modifier = Modifier.height(80.dp)) }
+                            }
+                        }
 
-                    LayoutMode.LIST -> {
-                        LazyColumn(
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            lazyItems(
-                                items = uiState.recipes,
-                                key = { it.id }
-                            ) { recipe ->
-                                ListItem(
-                                    headlineContent = {
-                                        Text(
-                                            text = recipe.title,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                        )
-                                    },
-                                    supportingContent = {
-                                        if (recipe.description.isNotBlank()) {
+                        LayoutMode.SMALL -> {
+                            LazyVerticalGrid(
+                                columns = GridCells.Fixed(2),
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                gridItems(items = uiState.recipes, key = { it.id }) { recipe ->
+                                    RecipeCard(
+                                        recipe = recipe,
+                                        onClick = { onRecipeClick(recipe.id) },
+                                        onFavoriteClick = {
+                                            viewModel.onToggleRecipeFavorite(recipe.id, recipe.isFavorite)
+                                        },
+                                    )
+                                }
+                                item(span = { GridItemSpan(2) }) {
+                                    Spacer(modifier = Modifier.height(80.dp))
+                                }
+                            }
+                        }
+
+                        LayoutMode.LIST -> {
+                            LazyColumn(
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                lazyItems(items = uiState.recipes, key = { it.id }) { recipe ->
+                                    ListItem(
+                                        headlineContent = {
                                             Text(
-                                                text = recipe.description,
+                                                text = recipe.title,
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis,
                                             )
-                                        }
-                                    },
-                                    leadingContent = {
-                                        Icon(Icons.Default.MenuBook, contentDescription = null)
-                                    },
-                                    trailingContent = {
-                                        IconButton(onClick = {
-                                            viewModel.onToggleRecipeFavorite(recipe.id, recipe.isFavorite)
-                                        }) {
-                                            Icon(
-                                                imageVector = if (recipe.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                                                contentDescription = null,
-                                                tint = if (recipe.isFavorite) {
-                                                    MaterialTheme.colorScheme.error
-                                                } else {
-                                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                                },
-                                            )
-                                        }
-                                    },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 4.dp)
-                                        .clickable { onRecipeClick(recipe.id) },
+                                        },
+                                        supportingContent = {
+                                            if (recipe.description.isNotBlank()) {
+                                                Text(
+                                                    text = recipe.description,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis,
+                                                )
+                                            }
+                                        },
+                                        leadingContent = {
+                                            Icon(Icons.Default.MenuBook, contentDescription = null)
+                                        },
+                                        trailingContent = {
+                                            IconButton(onClick = {
+                                                viewModel.onToggleRecipeFavorite(recipe.id, recipe.isFavorite)
+                                            }) {
+                                                Icon(
+                                                    imageVector = if (recipe.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                                    contentDescription = null,
+                                                    tint = if (recipe.isFavorite) MaterialTheme.colorScheme.error
+                                                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                                                )
+                                            }
+                                        },
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 4.dp)
+                                            .clickable { onRecipeClick(recipe.id) },
+                                    )
+                                }
+                                item { Spacer(modifier = Modifier.height(80.dp)) }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (showTutorialOverlay) {
+                Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f))) {
+                    val tutorialText = when (tutorialStep) {
+                        -1 -> stringResource(R.string.tutorial_overlay_welcome)
+                        0 -> stringResource(R.string.tutorial_overlay_add)
+                        1 -> stringResource(R.string.tutorial_overlay_shopping)
+                        2 -> stringResource(R.string.tutorial_overlay_lock)
+                        else -> stringResource(R.string.tutorial_overlay_settings)
+                    }
+
+                    val bubbleAlignment = Alignment.Center
+                    val bubbleModifier = Modifier
+                        .padding(horizontal = 20.dp)
+                        .fillMaxWidth(0.88f)
+
+                    Column(
+                        modifier = Modifier
+                            .align(bubbleAlignment)
+                            .then(bubbleModifier)
+                            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp))
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Text(
+                            text = tutorialText,
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            androidx.compose.material3.TextButton(onClick = onHandsOnTutorialDone) {
+                                Text(stringResource(R.string.tutorial_skip))
+                            }
+                            Button(
+                                onClick = {
+                                    if (tutorialStep >= 3) onHandsOnTutorialDone()
+                                    else tutorialStep += 1
+                                }
+                            ) {
+                                Text(
+                                    if (tutorialStep >= 3) stringResource(R.string.tutorial_done)
+                                    else stringResource(R.string.tutorial_next)
                                 )
                             }
-                            item { Spacer(modifier = Modifier.height(80.dp)) }
                         }
                     }
                 }

@@ -21,6 +21,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.blobet.recipebook.ui.tutorial.TutorialPrefs
 import com.blobet.recipebook.ui.detail.DetailScreen
 import com.blobet.recipebook.ui.edit.EditScreen
 import com.blobet.recipebook.ui.home.HomeScreen
@@ -33,6 +34,7 @@ import com.blobet.recipebook.ui.splash.SplashScreen
 fun NavGraph(
     sharedText: String? = null,
     sharedRecipePayloadJson: String? = null,
+    tutorialPrefs: TutorialPrefs,
 ) {
     val navController = rememberNavController()
     var keepScreenOn by rememberSaveable { mutableStateOf(false) }
@@ -61,6 +63,9 @@ fun NavGraph(
     }
 
     val hasSharedImport = !sharedText.isNullOrBlank() || !sharedRecipePayloadJson.isNullOrBlank()
+    var showHandsOnTutorial by remember {
+        mutableStateOf(tutorialPrefs.isTutorialNeeded() && !hasSharedImport)
+    }
     val startDestination = if (hasSharedImport) Screen.ImportRecipe.route else Screen.Splash.route
     var pendingSharedText by remember { mutableStateOf<String?>(sharedText) }
     var pendingSharedRecipePayloadJson by remember { mutableStateOf<String?>(sharedRecipePayloadJson) }
@@ -124,6 +129,11 @@ fun NavGraph(
                 },
                 onSettingsClick = {
                     navController.navigate(Screen.Settings.route)
+                },
+                showHandsOnTutorial = showHandsOnTutorial,
+                onHandsOnTutorialDone = {
+                    tutorialPrefs.markCompleted()
+                    showHandsOnTutorial = false
                 },
                 isKeepScreenOn = keepScreenOn,
                 onToggleKeepScreenOn = { keepScreenOn = !keepScreenOn },
